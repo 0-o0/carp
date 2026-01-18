@@ -8,7 +8,7 @@ import {
   updateGuest
 } from '@/lib/db';
 import { sendParkingDiscount } from '@/lib/parking-api';
-import { validatePlateNumber } from '@/components/ui/PlateInput';
+import { validatePlateNumber } from '@/lib/validation';
 import { parseShanghaiDateTime } from '@/lib/datetime';
 import { errorResponse, okResponse } from '@/lib/api-response';
 

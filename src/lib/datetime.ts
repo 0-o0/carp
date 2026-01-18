@@ -38,11 +38,25 @@ export function formatShanghaiDateTimeLocalInput(date: Date, options?: { withSec
 }
 
 /**
- * 解析上海时区日期字符串
- * @param value "YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DDTHH:mm:ss"
+ * 解析上海时区日期字符串或 ISO 格式
+ * @param value "YYYY-MM-DD HH:mm:ss" 或 "YYYY-MM-DDTHH:mm:ss" 或 ISO 格式
  */
 export function parseShanghaiDateTime(value: string): Date | null {
+  if (!value) return null;
+  
   const trimmed = value.trim();
+  
+  // 先尝试 ISO 格式（如 2026-01-19T08:00:00.000Z）
+  if (trimmed.includes('Z') || trimmed.match(/[+-]\d{2}:\d{2}$/)) {
+    try {
+      const date = new Date(trimmed);
+      return isNaN(date.getTime()) ? null : date;
+    } catch {
+      return null;
+    }
+  }
+  
+  // 尝试本地格式
   const match = trimmed.match(
     /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/
   );
