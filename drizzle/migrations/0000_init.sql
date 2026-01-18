@@ -96,6 +96,8 @@ CREATE INDEX IF NOT EXISTS idx_guests_status ON guests(status);
 CREATE INDEX IF NOT EXISTS idx_guests_lookup ON guests(name, phone, room_number);
 CREATE INDEX IF NOT EXISTS idx_submission_logs_created ON submission_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_created ON usage_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_usage_logs_guest ON usage_logs(guest_id);
 
 -- 初始化默认设置
 INSERT OR IGNORE INTO settings (key, value) VALUES 
@@ -108,4 +110,6 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('post_params_24hour', ''),
     ('post_params_5day', ''),
     ('default_use_count', '3'),
-    ('error_redirect_url', '');
+    ('error_redirect_url', ''),
+    ('log_enabled', 'false'),
+    ('log_retention_days', '7');

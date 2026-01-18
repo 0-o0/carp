@@ -52,6 +52,7 @@ export interface ParkingRequestResult {
   success: boolean;
   message?: string;
   rawResponse?: string;
+  resultKey?: string; // 远程系统返回的结果标识
 }
 
 /**
@@ -111,6 +112,10 @@ export async function sendParkingDiscount(
 
     const responseText = await response.text();
 
+    // 提取远程系统的 result_key
+    const resultKeyMatch = responseText.match(/"system_result_key"\s*:\s*"?(\d+)"?/);
+    const resultKey = resultKeyMatch ? resultKeyMatch[1] : undefined;
+
     // 检查响应
     // 如果包含 "system_result_key":"0" 表示失败
     if (responseText.includes('"system_result_key":"0"')) {
@@ -118,6 +123,7 @@ export async function sendParkingDiscount(
         success: false,
         message: '停车优惠申请失败',
         rawResponse: responseText,
+        resultKey,
       };
     }
 
@@ -125,6 +131,7 @@ export async function sendParkingDiscount(
     return {
       success: true,
       rawResponse: responseText,
+      resultKey,
     };
   } catch (error) {
     console.error('停车优惠请求失败:', error);

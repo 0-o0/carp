@@ -3,6 +3,7 @@ import {
   findGuestByInfo, 
   decrementGuestUseCount, 
   createUsageLog,
+  createSubmissionLog,
   getSetting,
   updateGuest
 } from '@/lib/db';
@@ -94,13 +95,25 @@ export async function POST(request: NextRequest) {
     // 发送停车优惠请求
     const result = await sendParkingDiscount(finalPlateNumber, guest.discountType);
 
-    // 记录使用日志
-    await createUsageLog({
-      guestId: guest.id,
-      plateNumber: finalPlateNumber,
-      requestSuccess: result.success,
-      responseData: result.rawResponse,
-    });
+    // 并行写入两种日志（性能优化）
+    await Promise.all([
+      // 使用记录日志
+      createUsageLog({
+        guestId: guest.id,
+        plateNumber: finalPlateNumber,
+        requestSuccess: result.success,
+        responseData: result.rawResponse,
+      }),
+      // 提交详情日志（含远程结果）
+      createSubmissionLog({
+        guestId: guest.id,
+        discountType: guest.discountType,
+        plateUsed: finalPlateNumber,
+        requestOk: result.success,
+        remoteResultKey: result.resultKey,
+        remoteRawSnippet: result.rawResponse?.substring(0, 500), // 限制长度
+      }),
+    ]);
 
     if (result.success) {
       return okResponse();

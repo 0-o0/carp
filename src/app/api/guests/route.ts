@@ -10,6 +10,7 @@ import {
   deleteGuest,
   searchGuests,
   getSetting,
+  createAuditLog,
   type Guest,
   type DiscountType,
   type GuestStatus
@@ -174,6 +175,16 @@ export async function POST(request: NextRequest) {
       return errorResponse('INTERNAL_ERROR', '创建失败', 500);
     }
 
+    // 记录审计日志（异步，不阻塞响应）
+    createAuditLog({
+      actorType: 'admin',
+      actorId: user.id || 0,
+      action: 'create_guest',
+      targetType: 'guest',
+      targetId: guest.id,
+      detailJson: JSON.stringify({ name, phone, roomNumber }),
+    }).catch(console.error);
+
     return okResponse({ guest: formatGuestForResponse(guest) });
   } catch (error) {
     console.error('创建住客失败:', error);
@@ -276,6 +287,16 @@ export async function PATCH(request: NextRequest) {
       return errorResponse('INTERNAL_ERROR', '更新失败', 500);
     }
 
+    // 记录审计日志（异步，不阻塞响应）
+    createAuditLog({
+      actorType: 'admin',
+      actorId: user.id || 0,
+      action: 'update_guest',
+      targetType: 'guest',
+      targetId: id,
+      detailJson: JSON.stringify(finalUpdateData),
+    }).catch(console.error);
+
     const updatedGuest = await getGuestById(id);
     return okResponse({ guest: updatedGuest ? formatGuestForResponse(updatedGuest) : null });
   } catch (error) {
@@ -299,11 +320,21 @@ export async function DELETE(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '缺少ID', 400);
     }
 
-    const success = await deleteGuest(parseInt(id, 10));
+    const guestId = parseInt(id, 10);
+    const success = await deleteGuest(guestId);
 
     if (!success) {
       return errorResponse('INTERNAL_ERROR', '删除失败', 500);
     }
+
+    // 记录审计日志（异步，不阻塞响应）
+    createAuditLog({
+      actorType: 'admin',
+      actorId: user.id || 0,
+      action: 'delete_guest',
+      targetType: 'guest',
+      targetId: guestId,
+    }).catch(console.error);
 
     return okResponse();
   } catch (error) {

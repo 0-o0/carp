@@ -12,6 +12,9 @@ interface Settings {
   jsessionid_5day: string;
   default_use_count: string;
   error_redirect_url: string;
+  // 日志设置
+  log_enabled: string;
+  log_retention_days: string;
 }
 
 export default function SettingsPage() {
@@ -23,11 +26,15 @@ export default function SettingsPage() {
     jsessionid_5day: '',
     default_use_count: '3',
     error_redirect_url: '',
+    // 日志设置
+    log_enabled: 'false',
+    log_retention_days: '7',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [messages, setMessages] = useState<Record<string, { type: 'success' | 'error'; text: string }>>({});
   const [showQRScanner, setShowQRScanner] = useState<'24hour' | '5day' | null>(null);
+  const [cleaningLogs, setCleaningLogs] = useState(false);
 
   // 加载设置
   const loadSettings = useCallback(async () => {
@@ -424,6 +431,158 @@ export default function SettingsPage() {
             <span><strong>重要提示：</strong>如果优惠失效，请重新获取二维码链接并更新</span>
           </li>
         </ul>
+      </div>
+
+      {/* 日志配置 */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-gray-100/60 overflow-hidden">
+        <div className="bg-gradient-to-r from-gray-600 to-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white">日志配置</h2>
+              <p className="text-xs text-white/80">管理使用记录和审计日志（D1 Free Plan 建议关闭）</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-4">
+          {/* 日志开关 */}
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-semibold text-gray-900">启用日志记录</label>
+                <p className="text-xs text-gray-500 mt-0.5">开启后会记录每次优惠使用和管理操作</p>
+              </div>
+              <button
+                onClick={() => {
+                  const newValue = settings.log_enabled === 'true' ? 'false' : 'true';
+                  setSettings(prev => ({ ...prev, log_enabled: newValue }));
+                  saveSetting('log_enabled', newValue);
+                }}
+                disabled={saving.log_enabled}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                  settings.log_enabled === 'true' ? 'bg-orange-500' : 'bg-gray-300'
+                } ${saving.log_enabled ? 'opacity-50' : ''}`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    settings.log_enabled === 'true' ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+            {messages.log_enabled && (
+              <p className={`text-xs mt-2 ${messages.log_enabled.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                {messages.log_enabled.text}
+              </p>
+            )}
+          </div>
+
+          {/* 日志保留天数 */}
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">日志保留天数</label>
+            <div className="flex gap-2">
+              <select
+                value={settings.log_retention_days}
+                onChange={e => setSettings(prev => ({ ...prev, log_retention_days: e.target.value }))}
+                className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-orange-400 transition-all"
+              >
+                <option value="3">3 天</option>
+                <option value="7">7 天</option>
+                <option value="14">14 天</option>
+                <option value="30">30 天</option>
+              </select>
+              <Button
+                variant="outline"
+                onClick={() => saveSetting('log_retention_days', settings.log_retention_days)}
+                loading={saving.log_retention_days}
+              >
+                保存
+              </Button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1.5">
+              超过保留期限的日志将被自动清理，建议设置较短时间以节省 D1 存储空间
+            </p>
+            {messages.log_retention_days && (
+              <p className={`text-xs mt-2 ${messages.log_retention_days.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                {messages.log_retention_days.text}
+              </p>
+            )}
+          </div>
+
+          {/* 手动清理日志 */}
+          <div className="p-3 sm:p-4 bg-red-50 rounded-xl border border-red-100">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">手动清理日志</label>
+            <p className="text-xs text-gray-500 mb-3">
+              立即删除超过保留天数的所有日志数据。此操作不可撤销。
+            </p>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!confirm(`确定要清理 ${settings.log_retention_days} 天前的所有日志吗？此操作不可撤销。`)) return;
+                setCleaningLogs(true);
+                try {
+                  const response = await fetch('/api/logs', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ retentionDays: parseInt(settings.log_retention_days, 10) }),
+                  });
+                  const result = await response.json();
+                  if (result.success) {
+                    setMessages(prev => ({
+                      ...prev,
+                      log_clean: { type: 'success', text: `已清理 ${result.deleted || 0} 条日志` },
+                    }));
+                  } else {
+                    setMessages(prev => ({
+                      ...prev,
+                      log_clean: { type: 'error', text: result.message || '清理失败' },
+                    }));
+                  }
+                } catch {
+                  setMessages(prev => ({
+                    ...prev,
+                    log_clean: { type: 'error', text: '清理失败，请稍后重试' },
+                  }));
+                } finally {
+                  setCleaningLogs(false);
+                }
+              }}
+              loading={cleaningLogs}
+              className="border-red-200 text-red-600 hover:bg-red-100"
+            >
+              🗑️ 清理过期日志
+            </Button>
+            {messages.log_clean && (
+              <p className={`text-xs mt-2 ${messages.log_clean.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                {messages.log_clean.text}
+              </p>
+            )}
+          </div>
+
+          {/* D1 存储警告 */}
+{/*           <div className="p-3 sm:p-4 bg-amber-50 rounded-xl border border-amber-200">
+            <div className="flex items-start gap-2">
+              <span className="text-amber-500 flex-shrink-0">⚠️</span>
+              <div>
+                <p className="text-sm font-semibold text-amber-800">Cloudflare D1 Free Plan 限制</p>
+                <ul className="text-xs text-amber-700 mt-1 space-y-0.5">
+                  <li>• 存储空间: 5GB</li>
+                  <li>• 每日读取: 500 万行</li>
+                  <li>• 每日写入: 10 万行</li>
+                </ul>
+                <p className="text-xs text-amber-600 mt-2">
+                  建议：如果请求量不大，可以关闭日志节省配额；如需开启，请定期清理。
+                </p>
+              </div>
+            </div>
+          </div> */}
+        </div>
       </div>
     </div>
   );

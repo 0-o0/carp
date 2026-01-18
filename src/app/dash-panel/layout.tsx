@@ -123,11 +123,12 @@ export default function DashPanelLayout({ children }: { children: ReactNode }) {
 
   const navItems = [
     { href: '/dash-panel/guests', label: '住客管理', icon: '👥' },
+    { href: '/dash-panel/logs', label: '使用记录', icon: '📊' },
     { href: '/dash-panel/settings', label: '系统设置', icon: '⚙️' },
   ];
 
   if (user?.isSuperAdmin) {
-    navItems.splice(1, 0, { href: '/dash-panel/admins', label: '管理员', icon: '🔐' });
+    navItems.splice(2, 0, { href: '/dash-panel/admins', label: '管理员', icon: '🔐' });
   }
 
   return (

@@ -69,7 +69,10 @@ export const usageLogs = sqliteTable('usage_logs', {
   requestSuccess: integer('request_success', { mode: 'boolean' }).default(false).notNull(),
   responseData: text('response_data'),
   createdAt: text('created_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
-});
+}, (table) => [
+  index('idx_usage_logs_created').on(table.createdAt),
+  index('idx_usage_logs_guest').on(table.guestId),
+]);
 
 // 提交日志
 export const submissionLogs = sqliteTable('submission_logs', {
