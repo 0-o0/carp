@@ -123,15 +123,36 @@ export async function POST(request: NextRequest) {
       const redirectUrl = await getSetting(urlKey);
 
       if (redirectUrl) {
-        return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { redirectUrl });
+        return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 
+          redirectUrl,
+          // 调试信息：远程请求的响应
+          _debug: {
+            remoteResultKey: result.resultKey,
+            remoteMessage: result.message,
+            remoteResponse: result.rawResponse?.substring(0, 500),
+          }
+        });
       }
 
       const fallbackUrl = await getSetting('error_redirect_url');
       if (fallbackUrl) {
-        return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { redirectUrl: fallbackUrl });
+        return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 
+          redirectUrl: fallbackUrl,
+          _debug: {
+            remoteResultKey: result.resultKey,
+            remoteMessage: result.message,
+            remoteResponse: result.rawResponse?.substring(0, 500),
+          }
+        });
       }
 
-      return errorResponse('EXTERNAL_ERROR', '优惠申请暂时无法处理，请联系前台工作人员', 500);
+      return errorResponse('EXTERNAL_ERROR', '优惠申请暂时无法处理，请联系前台工作人员', 500, {
+        _debug: {
+          remoteResultKey: result.resultKey,
+          remoteMessage: result.message,
+          remoteResponse: result.rawResponse?.substring(0, 500),
+        }
+      });
     }
   } catch (error) {
     console.error('提交处理失败:', error);
