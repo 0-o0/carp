@@ -64,7 +64,7 @@ export default function Home() {
       } else if (result.redirectUrl) {
         setTimeout(() => {
           window.location.href = result.redirectUrl!;
-        }, 100);
+        }, 500);
       } else {
         setErrorMessage(result.message || '提交失败，请稍后重试');
         setState('error');

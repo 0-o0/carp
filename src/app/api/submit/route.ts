@@ -125,12 +125,7 @@ export async function POST(request: NextRequest) {
       if (redirectUrl) {
         return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 
           redirectUrl,
-          // 调试信息：远程请求的响应
-          _debug: {
-            remoteResultKey: result.resultKey,
-            remoteMessage: result.message,
-            remoteResponse: result.rawResponse?.substring(0, 500),
-          }
+          remoteResponse: result.rawResponse,
         });
       }
 
@@ -138,20 +133,12 @@ export async function POST(request: NextRequest) {
       if (fallbackUrl) {
         return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 
           redirectUrl: fallbackUrl,
-          _debug: {
-            remoteResultKey: result.resultKey,
-            remoteMessage: result.message,
-            remoteResponse: result.rawResponse?.substring(0, 500),
-          }
+          remoteResponse: result.rawResponse,
         });
       }
 
       return errorResponse('EXTERNAL_ERROR', '优惠申请暂时无法处理，请联系前台工作人员', 500, {
-        _debug: {
-          remoteResultKey: result.resultKey,
-          remoteMessage: result.message,
-          remoteResponse: result.rawResponse?.substring(0, 500),
-        }
+        remoteResponse: result.rawResponse,
       });
     }
   } catch (error) {
