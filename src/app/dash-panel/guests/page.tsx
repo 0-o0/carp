@@ -4,44 +4,31 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, InputField, Modal, StatusBadge, ToggleSwitch, PlateInput, validatePlateNumber } from '@/components/ui';
 import { calculateDefaultCheckOutTimeShanghai, formatShanghaiDateTimeLocalInput, parseShanghaiDateTime } from '@/lib/datetime';
-import type { GuestsResponse } from '@/types/api';
-
-interface Guest {
-  id: number;
-  name: string;
-  phone: string;
-  room_number: string;
-  plate_number: string | null;
-  use_count: number;
-  check_in_time: string;
-  check_out_time: string;
-  discount_type: '24hour' | '5day';
-  status: 'active' | 'exhausted' | 'expired' | 'disabled';
-  created_at: string;
-  updated_at: string;
-}
+import type { GuestsResponse, GuestItem } from '@/types/api';
 
 export default function GuestsPage() {
   const router = useRouter();
-  const [guests, setGuests] = useState<Guest[]>([]);
+  const [guests, setGuests] = useState<GuestItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [defaultUseCount, setDefaultUseCount] = useState(3);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
+  const [editingGuest, setEditingGuest] = useState<GuestItem | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    roomNumber: '',
+    notes: '',
     plateNumber: '',
     useCount: 3,
+    discountType: '24hour' as '24hour' | '5day' | 'none',
     checkInTime: '',
     checkOutTime: '',
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [assistSubmitting, setAssistSubmitting] = useState<number | null>(null);
 
   // 加载住客列表
   const loadGuests = useCallback(async () => {
@@ -118,9 +105,10 @@ export default function GuestsPage() {
     setFormData({
       name: '',
       phone: '',
-      roomNumber: '',
+      notes: '',
       plateNumber: '',
       useCount: defaultUseCount,
+      discountType: '24hour',
       checkInTime: formatShanghaiDateTimeLocalInput(now),
       checkOutTime: formatShanghaiDateTimeLocalInput(checkOut),
     });
@@ -134,16 +122,17 @@ export default function GuestsPage() {
   };
 
   // 打开编辑弹窗
-  const openEditModal = (guest: Guest) => {
+  const openEditModal = (guest: GuestItem) => {
     setEditingGuest(guest);
     const checkIn = parseShanghaiDateTime(guest.check_in_time);
     const checkOut = parseShanghaiDateTime(guest.check_out_time);
     setFormData({
       name: guest.name,
       phone: guest.phone,
-      roomNumber: guest.room_number,
+      notes: guest.notes || '',
       plateNumber: guest.plate_number || '',
       useCount: guest.use_count,
+      discountType: guest.discount_type,
       checkInTime: checkIn ? formatShanghaiDateTimeLocalInput(checkIn) : guest.check_in_time.replace(' ', 'T'),
       checkOutTime: checkOut ? formatShanghaiDateTimeLocalInput(checkOut) : guest.check_out_time.replace(' ', 'T'),
     });
@@ -158,13 +147,66 @@ export default function GuestsPage() {
     if (!formData.name.trim()) errors.name = '请输入姓名';
     if (!formData.phone.trim()) errors.phone = '请输入手机号';
     else if (!/^1[3-9]\d{9}$/.test(formData.phone)) errors.phone = '手机号格式不正确';
-    if (!formData.roomNumber.trim()) errors.roomNumber = '请输入房间号';
     if (formData.plateNumber && !validatePlateNumber(formData.plateNumber)) {
       errors.plateNumber = '车牌号格式不正确';
     }
 
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  // 辅助提交优惠申请
+  const handleAssistSubmit = async (guest: GuestItem) => {
+    if (!guest.plate_number) {
+      alert('该住客没有录入车牌号，无法辅助提交');
+      return;
+    }
+
+    if (guest.discount_type === 'none') {
+      alert('该住客优惠类型为"无折扣"，无需提交优惠申请');
+      return;
+    }
+
+    if (guest.use_count <= 0) {
+      alert('该住客可用次数已用完');
+      return;
+    }
+
+    const checkOut = parseShanghaiDateTime(guest.check_out_time);
+    if (checkOut && checkOut.getTime() < Date.now()) {
+      alert('该住客已超过离店时间');
+      return;
+    }
+
+    if (!confirm(`确定要为 ${guest.name} 的车牌 ${guest.plate_number} 提交优惠申请吗？`)) {
+      return;
+    }
+
+    setAssistSubmitting(guest.id);
+    try {
+      const response = await fetch('/api/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          plateNumber: guest.plate_number,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`提交成功！\n${result.message || ''}`);
+        loadGuests();
+      } else {
+        alert(`提交失败：${result.message || '未知错误'}`);
+      }
+    } catch (error) {
+      console.error('辅助提交失败:', error);
+      alert('提交失败，请稍后重试');
+    } finally {
+      setAssistSubmitting(null);
+    }
   };
 
   // 提交新增
@@ -227,7 +269,7 @@ export default function GuestsPage() {
   };
 
   // 切换状态
-  const toggleStatus = async (guest: Guest) => {
+  const toggleStatus = async (guest: GuestItem) => {
     const newStatus = guest.status === 'disabled' ? 'active' : 'disabled';
     
     try {
@@ -282,7 +324,7 @@ export default function GuestsPage() {
   };
 
   // 获取状态
-  const getStatus = (guest: Guest): 'active' | 'exhausted' | 'expired' | 'disabled' => {
+  const getStatus = (guest: GuestItem): 'active' | 'exhausted' | 'expired' | 'disabled' => {
     if (guest.status === 'disabled') return 'disabled';
     if (guest.use_count <= 0) return 'exhausted';
     const checkOut = parseShanghaiDateTime(guest.check_out_time);
@@ -374,7 +416,7 @@ export default function GuestsPage() {
                 <thead>
                   <tr>
                     <th>住客信息</th>
-                    <th>房间号</th>
+                    <th>备注</th>
                     <th>车牌号</th>
                     <th>剩余次数</th>
                     <th>优惠类型</th>
@@ -402,7 +444,13 @@ export default function GuestsPage() {
                               <div className="text-sm text-gray-500">{guest.phone}</div>
                             </div>
                           </td>
-                          <td>{guest.room_number}</td>
+                          <td>
+                            {guest.notes ? (
+                              <span className="text-gray-600 text-sm">{guest.notes}</span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
                           <td>
                             {guest.plate_number ? (
                               <span className="font-mono">{guest.plate_number}</span>
@@ -419,9 +467,11 @@ export default function GuestsPage() {
                             <span className={`px-2 py-1 rounded text-xs ${
                               guest.discount_type === '5day' 
                                 ? 'bg-blue-100 text-blue-700' 
+                                : guest.discount_type === 'none'
+                                ? 'bg-gray-100 text-gray-700'
                                 : 'bg-purple-100 text-purple-700'
                             }`}>
-                              {guest.discount_type === '5day' ? '5天' : '24小时'}
+                              {guest.discount_type === '5day' ? '5天' : guest.discount_type === 'none' ? '无折扣' : '24小时'}
                             </span>
                           </td>
                           <td className="text-sm text-gray-600">
@@ -438,6 +488,16 @@ export default function GuestsPage() {
                           </td>
                           <td>
                             <div className="flex items-center gap-2">
+                              {guest.plate_number && guest.discount_type !== 'none' && status === 'active' && (
+                                <button
+                                  onClick={() => handleAssistSubmit(guest)}
+                                  disabled={assistSubmitting === guest.id}
+                                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                  title="辅助提交优惠申请"
+                                >
+                                  {assistSubmitting === guest.id ? '提交中...' : '辅助提交'}
+                                </button>
+                              )}
                               <button
                                 onClick={() => openEditModal(guest)}
                                 className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
@@ -489,8 +549,8 @@ export default function GuestsPage() {
                     {/* 卡片详情 */}
                     <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                       <div>
-                        <span className="text-gray-500">房间: </span>
-                        <span className="font-medium text-gray-900">{guest.room_number}</span>
+                        <span className="text-gray-500">备注: </span>
+                        <span className="font-medium text-gray-900">{guest.notes || '-'}</span>
                       </div>
                       <div>
                         <span className="text-gray-500">剩余: </span>
@@ -506,9 +566,11 @@ export default function GuestsPage() {
                         <span className={`px-2 py-0.5 rounded text-xs ${
                           guest.discount_type === '5day' 
                             ? 'bg-blue-100 text-blue-700' 
+                            : guest.discount_type === 'none'
+                            ? 'bg-gray-100 text-gray-700'
                             : 'bg-purple-100 text-purple-700'
                         }`}>
-                          {guest.discount_type === '5day' ? '5天优惠' : '24小时'}
+                          {guest.discount_type === '5day' ? '5天优惠' : guest.discount_type === 'none' ? '无折扣' : '24小时'}
                         </span>
                       </div>
                     </div>
@@ -527,6 +589,16 @@ export default function GuestsPage() {
                         />
                       </div>
                       <div className="flex items-center gap-1">
+                        {guest.plate_number && guest.discount_type !== 'none' && status === 'active' && (
+                          <button
+                            onClick={() => handleAssistSubmit(guest)}
+                            disabled={assistSubmitting === guest.id}
+                            className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            title="辅助提交"
+                          >
+                            {assistSubmitting === guest.id ? '...' : '辅助提交'}
+                          </button>
+                        )}
                         <button
                           onClick={() => openEditModal(guest)}
                           className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
@@ -574,11 +646,10 @@ export default function GuestsPage() {
             maxLength={11}
           />
           <InputField
-            label="房间号 *"
-            placeholder="请输入房间号"
-            value={formData.roomNumber}
-            onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-            error={formErrors.roomNumber}
+            label="备注"
+            placeholder="可选，如房间号、特殊说明等"
+            value={formData.notes}
+            onChange={e => setFormData({ ...formData, notes: e.target.value })}
           />
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -591,6 +662,20 @@ export default function GuestsPage() {
             {formErrors.plateNumber && (
               <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
             )}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              优惠类型
+            </label>
+            <select
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+              value={formData.discountType}
+              onChange={e => setFormData({ ...formData, discountType: e.target.value as '24hour' | '5day' | 'none' })}
+            >
+              <option value="24hour">24小时优惠</option>
+              <option value="5day">5天优惠</option>
+              <option value="none">无折扣</option>
+            </select>
           </div>
           <InputField
             label="可用次数"
@@ -654,11 +739,10 @@ export default function GuestsPage() {
             maxLength={11}
           />
           <InputField
-            label="房间号 *"
-            placeholder="请输入房间号"
-            value={formData.roomNumber}
-            onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-            error={formErrors.roomNumber}
+            label="备注"
+            placeholder="可选，如房间号、特殊说明等"
+            value={formData.notes}
+            onChange={e => setFormData({ ...formData, notes: e.target.value })}
           />
           <div>
             <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -671,6 +755,20 @@ export default function GuestsPage() {
             {formErrors.plateNumber && (
               <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
             )}
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-900 mb-2">
+              优惠类型
+            </label>
+            <select
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+              value={formData.discountType}
+              onChange={e => setFormData({ ...formData, discountType: e.target.value as '24hour' | '5day' | 'none' })}
+            >
+              <option value="24hour">24小时优惠</option>
+              <option value="5day">5天优惠</option>
+              <option value="none">无折扣</option>
+            </select>
           </div>
           <InputField
             label="可用次数"

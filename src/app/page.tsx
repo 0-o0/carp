@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import { GradientBackground, PlateInput, Confetti, validatePlateNumber } from '@/components/ui';
 
 type SubmitState = 'form' | 'loading' | 'success' | 'error';
@@ -12,29 +12,57 @@ interface SubmitResponse {
   message?: string;
 }
 
+interface PaySettings {
+  pay_url: string;
+  pay_url_noplate: string;
+}
+
 export default function Home() {
   const [state, setState] = useState<SubmitState>('form');
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    roomNumber: '',
     plateNumber: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [plateRequired, setPlateRequired] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [paySettings, setPaySettings] = useState<PaySettings>({ pay_url: '', pay_url_noplate: '' });
+
+  // 加载付费设置
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then((data: { success: boolean; settings?: PaySettings }) => {
+        if (data.success && data.settings) {
+          setPaySettings({
+            pay_url: data.settings.pay_url || 'http://www.szdaqin.cn/payIndex?parkid=229',
+            pay_url_noplate: data.settings.pay_url_noplate || 'http://www.szdaqin.cn/payIndex?parkid=229&channelno=4&sentryno=0',
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = '请输入姓名';
-    if (!formData.phone.trim()) newErrors.phone = '请输入手机号';
-    else if (!/^1[3-9]\d{9}$/.test(formData.phone)) newErrors.phone = '请输入正确的手机号';
-    if (!formData.roomNumber.trim()) newErrors.roomNumber = '请输入房间号';
+    // 至少需要 (姓名或手机号) 或 车牌号
+    const hasNameOrPhone = formData.name.trim() || formData.phone.trim();
+    const hasPlate = formData.plateNumber.trim();
 
-    if (plateRequired || formData.plateNumber) {
-      if (!formData.plateNumber) newErrors.plateNumber = '请输入车牌号';
-      else if (!validatePlateNumber(formData.plateNumber)) newErrors.plateNumber = '车牌号格式不正确（如：粤B12345）';
+    if (!hasNameOrPhone && !hasPlate) {
+      newErrors.form = '请填写姓名/手机号，或填写车牌号';
+    }
+
+    if (formData.phone.trim() && !/^1[3-9]\d{9}$/.test(formData.phone)) {
+      newErrors.phone = '请输入正确的手机号';
+    }
+
+    if (plateRequired && !formData.plateNumber) {
+      newErrors.plateNumber = '请输入车牌号';
+    } else if (formData.plateNumber && !validatePlateNumber(formData.plateNumber)) {
+      newErrors.plateNumber = '车牌号格式不正确（如：粤B12345）';
     }
 
     setErrors(newErrors);
@@ -59,7 +87,7 @@ export default function Home() {
         setState('success');
       } else if (result.requirePlate) {
         setPlateRequired(true);
-        setErrors({ plateNumber: '管理员未登记车牌号，请填写您的车牌号' });
+        setErrors({ plateNumber: '请填写您的车牌号' });
         setState('form');
       } else if (result.redirectUrl) {
         setTimeout(() => {
@@ -77,10 +105,30 @@ export default function Home() {
 
   const resetToForm = () => {
     setState('form');
-    setFormData({ name: '', phone: '', roomNumber: '', plateNumber: '' });
+    setFormData({ name: '', phone: '', plateNumber: '' });
     setPlateRequired(false);
     setErrors({});
     setErrorMessage('');
+  };
+
+  // 正常付费 - 如果有车牌则带上车牌参数跳转
+  const goToPay = () => {
+    if (paySettings.pay_url) {
+      let url = paySettings.pay_url;
+      // 如果用户填写了车牌号，可以拼接到URL中（某些停车系统支持）
+      if (formData.plateNumber && validatePlateNumber(formData.plateNumber)) {
+        const separator = url.includes('?') ? '&' : '?';
+        url = `${url}${separator}plateno=${encodeURIComponent(formData.plateNumber.toUpperCase())}`;
+      }
+      window.location.href = url;
+    }
+  };
+
+  // 无牌车付费
+  const goToPayNoPlate = () => {
+    if (paySettings.pay_url_noplate) {
+      window.location.href = paySettings.pay_url_noplate;
+    }
   };
 
   if (state === 'success') {
@@ -272,9 +320,14 @@ export default function Home() {
         {/* 表单区域 */}
         <div className="flex-1 px-4 pb-8">
           <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl p-6 border border-white/60">
+            {errors.form && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-600 text-sm">{errors.form}</p>
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">姓名</label>
+                <label className="block text-sm font-bold text-gray-900 mb-2">姓名 <span className="text-gray-400 font-normal">(可选)</span></label>
                 <input
                   type="text"
                   placeholder="请输入姓名"
@@ -286,7 +339,7 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">手机号</label>
+                <label className="block text-sm font-bold text-gray-900 mb-2">手机号 <span className="text-gray-400 font-normal">(可选)</span></label>
                 <input
                   type="tel"
                   placeholder="请输入手机号"
@@ -299,18 +352,6 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">房间号</label>
-                <input
-                  type="text"
-                  placeholder="请输入房间号"
-                  value={formData.roomNumber}
-                  onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-                  className={`w-full px-4 py-3.5 bg-white border-2 ${errors.roomNumber ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all`}
-                />
-                {errors.roomNumber && <p className="text-red-500 text-sm mt-1.5">{errors.roomNumber}</p>}
-              </div>
-
-              <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2">
                   车牌号 {plateRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">(可选)</span>}
                 </label>
@@ -320,6 +361,7 @@ export default function Home() {
                   required={plateRequired}
                 />
                 {errors.plateNumber && <p className="text-red-500 text-sm mt-1.5">{errors.plateNumber}</p>}
+                <p className="text-xs text-gray-400 mt-1">💡 后台已录入车牌？只填姓名或手机号即可</p>
               </div>
 
               <button
@@ -335,9 +377,43 @@ export default function Home() {
                     </svg>
                     提交中...
                   </span>
-                ) : '提交申请'}
+                ) : '🎁 申请住客优惠'}
               </button>
             </form>
+
+            {/* 分隔线 */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-gray-400">非住客请选择</span>
+              </div>
+            </div>
+
+            {/* 无折扣付费选项 */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={goToPay}
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                💳 正常缴费（无优惠）
+              </button>
+              <button
+                type="button"
+                onClick={goToPayNoPlate}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                无车牌车缴费
+              </button>
+            </div>
 
             <p className="text-center text-sm text-gray-400 mt-5">
               如有疑问请联系前台工作人员
@@ -422,12 +498,18 @@ export default function Home() {
           <div className="w-full max-w-md">
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">填写信息</h2>
-              <p className="text-gray-500">请确保信息与入住登记一致</p>
+              <p className="text-gray-500">填写姓名+手机号 或 车牌号即可申请</p>
             </div>
+
+            {errors.form && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+                <p className="text-red-600 text-sm">{errors.form}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">姓名</label>
+                <label className="block text-sm font-bold text-gray-900 mb-2">姓名 <span className="text-gray-400 font-normal">(可选)</span></label>
                 <input
                   type="text"
                   placeholder="请输入您的姓名"
@@ -439,7 +521,7 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">手机号</label>
+                <label className="block text-sm font-bold text-gray-900 mb-2">手机号 <span className="text-gray-400 font-normal">(可选)</span></label>
                 <input
                   type="tel"
                   placeholder="请输入11位手机号"
@@ -452,18 +534,6 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">房间号</label>
-                <input
-                  type="text"
-                  placeholder="例如：8808"
-                  value={formData.roomNumber}
-                  onChange={e => setFormData({ ...formData, roomNumber: e.target.value })}
-                  className={`w-full px-5 py-4 bg-white border-2 ${errors.roomNumber ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300 transition-all`}
-                />
-                {errors.roomNumber && <p className="text-red-500 text-sm mt-2">{errors.roomNumber}</p>}
-              </div>
-
-              <div>
                 <label className="block text-sm font-bold text-gray-900 mb-2">
                   车牌号 {plateRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">(可选)</span>}
                 </label>
@@ -473,6 +543,7 @@ export default function Home() {
                   required={plateRequired}
                 />
                 {errors.plateNumber && <p className="text-red-500 text-sm mt-2">{errors.plateNumber}</p>}
+                <p className="text-xs text-gray-400 mt-1.5">💡 后台已录入车牌？只填姓名或手机号即可</p>
               </div>
 
               <div className="pt-2">
@@ -489,19 +560,47 @@ export default function Home() {
                       </svg>
                       提交中...
                     </span>
-                  ) : '提交申请'}
+                  ) : '🎁 申请住客优惠'}
                 </button>
               </div>
             </form>
 
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-                <svg className="w-5 h-5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-                <span>提交即表示同意酒店停车优惠条款</span>
+            {/* 分隔线 */}
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
               </div>
-              <p className="text-center text-sm text-gray-400 mt-3">
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white/80 text-gray-400">非住客请选择</span>
+              </div>
+            </div>
+
+            {/* 无折扣付费选项 */}
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={goToPay}
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                💳 正常缴费（无优惠）
+              </button>
+              <button
+                type="button"
+                onClick={goToPayNoPlate}
+                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                无车牌车缴费
+              </button>
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-center text-sm text-gray-400">
                 如有疑问请联系前台 · 服务时间 24 小时
               </p>
             </div>

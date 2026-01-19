@@ -19,35 +19,30 @@ import {
 interface CreateGuestBody {
   name: string;
   phone: string;
-  roomNumber: string;
+  notes?: string;
   plateNumber?: string;
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
+  discountType?: '24hour' | '5day' | 'none';
 }
 
 interface UpdateGuestBody {
   id: number;
   name?: string;
   phone?: string;
-  roomNumber?: string;
+  notes?: string;
   plateNumber?: string;
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
-  status?: string;
+  discountType?: '24hour' | '5day' | 'none';
+  status?: 'active' | 'exhausted' | 'expired' | 'disabled';
 }
 
 // 计算离店时间
 function calculateCheckOutTime(checkInTime: Date): Date {
   return calculateDefaultCheckOutTimeShanghai(checkInTime);
-}
-
-// 计算优惠类型
-function calculateDiscountType(checkInTime: Date, checkOutTime: Date): DiscountType {
-  const diffTime = checkOutTime.getTime() - checkInTime.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  return diffDays > 1 ? '5day' : '24hour';
 }
 
 // 解析日期时间字符串
@@ -83,7 +78,7 @@ function formatGuestForResponse(guest: Guest) {
     id: guest.id,
     name: guest.name,
     phone: guest.phone,
-    room_number: guest.roomNumber,
+    notes: guest.notes,
     plate_number: guest.plateNumber,
     use_count: guest.useCount,
     check_in_time: checkInDate?.toISOString() || guest.checkInTime,
@@ -130,10 +125,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json() as CreateGuestBody;
-    const { name, phone, roomNumber, plateNumber, useCount, checkInTime, checkOutTime } = body;
+    const { name, phone, notes, plateNumber, useCount, checkInTime, checkOutTime, discountType } = body;
 
-    if (!name || !phone || !roomNumber) {
-      return errorResponse('VALIDATION_ERROR', '请填写必要信息（姓名、手机号、房间号）', 400);
+    if (!name || !phone) {
+      return errorResponse('VALIDATION_ERROR', '请填写必要信息（姓名、手机号）', 400);
     }
 
     // 验证手机号格式
@@ -156,18 +151,18 @@ export async function POST(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '离店时间格式不正确', 400);
     }
 
-    // 计算优惠类型
-    const discountType = calculateDiscountType(checkIn, checkOut);
+    // 优惠类型：管理员手动设置，默认24hour
+    const finalDiscountType = discountType || '24hour';
 
     const guest = await createGuest({
       name: name.trim(),
       phone: phone.trim(),
-      roomNumber: roomNumber.trim(),
+      notes: notes?.trim() || null,
       plateNumber: plateNumber?.toUpperCase() || null,
       useCount: finalUseCount,
       checkInTime: formatShanghaiDateTimeForDB(checkIn),
       checkOutTime: formatShanghaiDateTimeForDB(checkOut),
-      discountType,
+      discountType: finalDiscountType,
       createdBy: user.id || null,
     });
 
@@ -182,7 +177,7 @@ export async function POST(request: NextRequest) {
       action: 'create_guest',
       targetType: 'guest',
       targetId: guest.id,
-      detailJson: JSON.stringify({ name, phone, roomNumber }),
+      detailJson: JSON.stringify({ name, phone, notes }),
     }).catch(console.error);
 
     return okResponse({ guest: formatGuestForResponse(guest) });
@@ -216,7 +211,7 @@ export async function PATCH(request: NextRequest) {
     const finalUpdateData: {
       name?: string;
       phone?: string;
-      roomNumber?: string;
+      notes?: string | null;
       plateNumber?: string | null;
       useCount?: number;
       checkInTime?: string;
@@ -227,11 +222,19 @@ export async function PATCH(request: NextRequest) {
 
     if (updateData.name) finalUpdateData.name = updateData.name.trim();
     if (updateData.phone) finalUpdateData.phone = updateData.phone.trim();
-    if (updateData.roomNumber) finalUpdateData.roomNumber = updateData.roomNumber.trim();
+    if (updateData.notes !== undefined) finalUpdateData.notes = updateData.notes?.trim() || null;
     if (updateData.plateNumber !== undefined) {
       finalUpdateData.plateNumber = updateData.plateNumber?.toUpperCase() || null;
     }
     if (updateData.useCount !== undefined) finalUpdateData.useCount = updateData.useCount;
+    
+    // 处理优惠类型更新（管理员手动设置）
+    if (updateData.discountType) {
+      const validTypes: DiscountType[] = ['24hour', '5day', 'none'];
+      if (validTypes.includes(updateData.discountType)) {
+        finalUpdateData.discountType = updateData.discountType;
+      }
+    }
     
     // 处理状态更新
     if (updateData.status) {
@@ -258,13 +261,6 @@ export async function PATCH(request: NextRequest) {
         return errorResponse('VALIDATION_ERROR', '离店时间格式不正确', 400);
       }
       finalUpdateData.checkOutTime = formatShanghaiDateTimeForDB(parsed);
-      
-      // 重新计算优惠类型
-      const checkInStr = finalUpdateData.checkInTime || guest.checkInTime;
-      const checkInDate = parseShanghaiDateTime(checkInStr);
-      if (checkInDate) {
-        finalUpdateData.discountType = calculateDiscountType(checkInDate, parsed);
-      }
     }
 
     // 如果次数从0变为大于0，或者延长了离店时间，重置状态为active

@@ -35,7 +35,7 @@ export default function DashPanelLogin() {
       const response = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include', // 确保接收和发送 cookie
+        credentials: 'include',
         body: JSON.stringify({
           action: 'login',
           username: formData.username,
@@ -101,6 +101,24 @@ export default function DashPanelLogin() {
       const result: AuthResponse = await response.json();
 
       if (result.success) {
+        const loginResponse = await fetch('/api/auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            action: 'login',
+            username: formData.username,
+            password: newPassword,
+          }),
+        });
+        const loginResult: AuthResponse = await loginResponse.json();
+        if (!loginResult.success) {
+          setErrors({ password: loginResult.message || '登录失败' });
+          return;
+        }
+        if (loginResult.user) {
+          localStorage.setItem('dash_user', JSON.stringify(loginResult.user));
+        }
         router.push('/dash-panel/guests');
       } else {
         setErrors({ password: result.message || '修改失败' });

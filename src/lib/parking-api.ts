@@ -52,7 +52,7 @@ export interface ParkingRequestResult {
   success: boolean;
   message?: string;
   rawResponse?: string;
-  resultKey?: string; // 远程系统返回的结果标识
+  resultKey?: string;
 }
 
 /**

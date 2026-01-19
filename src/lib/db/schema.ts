@@ -20,23 +20,22 @@ export const guests = sqliteTable('guests', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull(),
   phone: text('phone').notNull(),
-  roomNumber: text('room_number').notNull(),
+  notes: text('notes'),
   plateNumber: text('plate_number'),
   useCount: integer('use_count').default(3).notNull(),
   usesDefaultSnapshot: integer('uses_default_snapshot').default(3).notNull(),
   checkInTime: text('check_in_time').notNull(),
   checkOutTime: text('check_out_time').notNull(),
-  discountType: text('discount_type', { enum: ['24hour', '5day'] }).notNull(),
+  discountType: text('discount_type', { enum: ['24hour', '5day', 'none'] }).notNull(),
   status: text('status', { enum: ['active', 'exhausted', 'expired', 'disabled'] }).default('active').notNull(),
   createdBy: integer('created_by').references(() => admins.id),
   createdAt: text('created_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
   updatedAt: text('updated_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
 }, (table) => [
   index('idx_guests_phone').on(table.phone),
-  index('idx_guests_room').on(table.roomNumber),
   index('idx_guests_plate').on(table.plateNumber),
   index('idx_guests_status').on(table.status),
-  index('idx_guests_lookup').on(table.name, table.phone, table.roomNumber),
+  index('idx_guests_lookup').on(table.name, table.phone),
 ]);
 
 // 系统设置表
@@ -78,7 +77,7 @@ export const usageLogs = sqliteTable('usage_logs', {
 export const submissionLogs = sqliteTable('submission_logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guestId: integer('guest_id').notNull().references(() => guests.id, { onDelete: 'cascade' }),
-  discountType: text('discount_type', { enum: ['24hour', '5day'] }).notNull(),
+  discountType: text('discount_type', { enum: ['24hour', '5day', 'none'] }).notNull(),
   plateUsed: text('plate_used').notNull(),
   requestOk: integer('request_ok', { mode: 'boolean' }).default(false).notNull(),
   remoteResultKey: text('remote_result_key'),
@@ -115,5 +114,5 @@ export type SubmissionLog = typeof submissionLogs.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 
 // 优惠类型和状态
-export type DiscountType = '24hour' | '5day';
+export type DiscountType = '24hour' | '5day' | 'none';
 export type GuestStatus = 'active' | 'exhausted' | 'expired' | 'disabled';

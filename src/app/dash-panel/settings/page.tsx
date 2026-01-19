@@ -15,6 +15,9 @@ interface Settings {
   // 日志设置
   log_enabled: string;
   log_retention_days: string;
+  // 付费URL设置
+  pay_url: string;
+  pay_url_noplate: string;
 }
 
 export default function SettingsPage() {
@@ -29,6 +32,9 @@ export default function SettingsPage() {
     // 日志设置
     log_enabled: 'false',
     log_retention_days: '7',
+    // 付费URL设置
+    pay_url: '',
+    pay_url_noplate: '',
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -399,6 +405,77 @@ export default function SettingsPage() {
                 </p>
               )}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 付费链接设置 */}
+      <div className="bg-white rounded-2xl sm:rounded-3xl shadow-lg border border-blue-100/60 overflow-hidden">
+        <div className="bg-gradient-to-r from-blue-500 to-cyan-500 px-4 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-base sm:text-lg font-bold text-white">付费链接设置</h2>
+              <p className="text-xs text-white/80">非住客正常缴费和无牌车缴费的跳转地址</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-6 space-y-4">
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">正常缴费 URL</label>
+            <p className="text-xs text-gray-500 mb-2">非住客点击"正常缴费"按钮跳转的链接</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="例如: http://www.szdaqin.cn/payIndex?parkid=229"
+                value={settings.pay_url}
+                onChange={e => setSettings(prev => ({ ...prev, pay_url: e.target.value }))}
+                className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-all"
+              />
+              <Button
+                variant="outline"
+                onClick={() => saveSetting('pay_url', settings.pay_url)}
+                loading={saving.pay_url}
+              >
+                保存
+              </Button>
+            </div>
+            {messages.pay_url && (
+              <p className={`text-xs mt-2 ${messages.pay_url.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                {messages.pay_url.text}
+              </p>
+            )}
+          </div>
+
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+            <label className="block text-sm font-semibold text-gray-900 mb-2">无牌车缴费 URL</label>
+            <p className="text-xs text-gray-500 mb-2">无车牌车辆点击"无牌车缴费"按钮跳转的链接</p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="例如: http://www.szdaqin.cn/payIndex?parkid=229&channelno=4&sentryno=0"
+                value={settings.pay_url_noplate}
+                onChange={e => setSettings(prev => ({ ...prev, pay_url_noplate: e.target.value }))}
+                className="flex-1 min-w-0 px-3 sm:px-4 py-2 sm:py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 transition-all"
+              />
+              <Button
+                variant="outline"
+                onClick={() => saveSetting('pay_url_noplate', settings.pay_url_noplate)}
+                loading={saving.pay_url_noplate}
+              >
+                保存
+              </Button>
+            </div>
+            {messages.pay_url_noplate && (
+              <p className={`text-xs mt-2 ${messages.pay_url_noplate.type === 'success' ? 'text-green-600' : 'text-red-500'}`}>
+                {messages.pay_url_noplate.text}
+              </p>
+            )}
           </div>
         </div>
       </div>

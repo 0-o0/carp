@@ -14,6 +14,23 @@ export { getDb } from './client';
 let currentDb: DrizzleDB | null = null;
 let currentDbPromise: Promise<DrizzleDB> | null = null;
 
+function isProbablyWorkerdRuntime(): boolean {
+  return (
+    typeof (globalThis as any).WebSocketPair === 'function' &&
+    typeof (globalThis as any).caches !== 'undefined'
+  );
+}
+
+function tryGetCloudflareD1(): D1Database | null {
+  try {
+    const context = getCloudflareContext();
+    const env = (context?.env as CloudflareEnv) ?? null;
+    return env?.DB ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * 设置当前请求的数据库实例
  */
@@ -29,8 +46,20 @@ export async function db(): Promise<DrizzleDB> {
   if (currentDb) return currentDb;
   if (currentDbPromise) return currentDbPromise;
 
-  const env = tryGetCloudflareEnv();
-  currentDbPromise = getDb(env?.DB);
+  const d1 = tryGetCloudflareD1();
+  if (d1) {
+    currentDbPromise = getDb(d1);
+    currentDb = await currentDbPromise;
+    return currentDb;
+  }
+
+  if (isProbablyWorkerdRuntime()) {
+    throw new Error(
+      'Cloudflare D1 binding \"DB\" is missing. Ensure your deployment binds a D1 database as DB (wrangler.toml [[d1_databases]] binding = \"DB\").'
+    );
+  }
+
+  currentDbPromise = getDb();
   currentDb = await currentDbPromise;
   return currentDb;
 }
@@ -107,6 +136,7 @@ export async function createAdmin(
     username,
     password,
     isSuperAdmin,
+    mustChangePassword: !isSuperAdmin,
   }).returning();
   return result[0] || null;
 }
@@ -114,7 +144,11 @@ export async function createAdmin(
 export async function updateAdminPassword(id: number, password: string): Promise<boolean> {
   const database = await db();
   await database.update(admins)
-    .set({ password, updatedAt: sql`datetime('now', 'localtime')` })
+    .set({
+      password,
+      mustChangePassword: false,
+      updatedAt: sql`datetime('now', 'localtime')`,
+    })
     .where(eq(admins.id, id));
   return true;
 }
@@ -162,33 +196,89 @@ export async function searchGuests(query: string): Promise<Guest[]> {
     or(
       like(guests.name, pattern),
       like(guests.phone, pattern),
-      like(guests.roomNumber, pattern),
+      like(guests.notes, pattern),
       like(guests.plateNumber, pattern)
     )
   ).orderBy(desc(guests.createdAt));
 }
 
+
+export interface FindGuestResult {
+  guest: Guest | null;
+  matchedBy: 'plate' | 'name_phone' | 'phone' | 'name' | null;
+  reason?: 'not_found' | 'multiple_matches';
+}
+
 export async function findGuestByInfo(
-  name: string,
-  phone: string,
-  roomNumber: string
-): Promise<Guest | null> {
+  name?: string,
+  phone?: string,
+  plateNumber?: string
+): Promise<FindGuestResult> {
   const database = await db();
-  const result = await database.select().from(guests).where(
-    sql`${guests.name} = ${name} AND ${guests.phone} = ${phone} AND ${guests.roomNumber} = ${roomNumber}`
-  ).limit(1);
-  return result[0] || null;
+  
+  // 1. 优先通过车牌号匹配（如果提供了车牌号）
+  if (plateNumber) {
+    const result = await database.select().from(guests).where(
+      eq(guests.plateNumber, plateNumber.toUpperCase())
+    ).limit(1);
+    if (result[0]) {
+      return { guest: result[0], matchedBy: 'plate' };
+    }
+  }
+  
+  // 2. 通过姓名+手机号同时匹配（最精确）
+  if (name && phone) {
+    const result = await database.select().from(guests).where(
+      and(
+        eq(guests.name, name.trim()),
+        eq(guests.phone, phone.trim())
+      )
+    ).limit(1);
+    if (result[0]) {
+      return { guest: result[0], matchedBy: 'name_phone' };
+    }
+  }
+  
+  // 3. 仅通过手机号匹配
+  if (phone) {
+    const result = await database.select().from(guests).where(
+      eq(guests.phone, phone.trim())
+    ).limit(2);
+    if (result.length === 1) {
+      return { guest: result[0], matchedBy: 'phone' };
+    }
+    // 存在多个匹配，需要更多信息
+    if (result.length > 1) {
+      return { guest: null, matchedBy: null, reason: 'multiple_matches' };
+    }
+  }
+  
+  // 4. 仅通过姓名匹配
+  if (name) {
+    const results = await database.select().from(guests).where(
+      eq(guests.name, name.trim())
+    );
+    if (results.length === 1) {
+      return { guest: results[0], matchedBy: 'name' };
+    }
+    // 存在多个匹配，需要更多信息
+    if (results.length > 1) {
+      return { guest: null, matchedBy: null, reason: 'multiple_matches' };
+    }
+  }
+  
+  return { guest: null, matchedBy: null, reason: 'not_found' };
 }
 
 export interface CreateGuestData {
   name: string;
   phone: string;
-  roomNumber: string;
+  notes?: string | null;
   plateNumber?: string | null;
   useCount: number;
   checkInTime: string;
   checkOutTime: string;
-  discountType: '24hour' | '5day';
+  discountType: '24hour' | '5day' | 'none';
   createdBy?: number | null;
 }
 
@@ -197,7 +287,7 @@ export async function createGuest(data: CreateGuestData): Promise<Guest | null> 
   const result = await database.insert(guests).values({
     name: data.name,
     phone: data.phone,
-    roomNumber: data.roomNumber,
+    notes: data.notes,
     plateNumber: data.plateNumber,
     useCount: data.useCount,
     checkInTime: data.checkInTime,
@@ -211,12 +301,12 @@ export async function createGuest(data: CreateGuestData): Promise<Guest | null> 
 export interface UpdateGuestData {
   name?: string;
   phone?: string;
-  roomNumber?: string;
+  notes?: string | null;
   plateNumber?: string | null;
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
-  discountType?: '24hour' | '5day';
+  discountType?: '24hour' | '5day' | 'none';
   status?: 'active' | 'exhausted' | 'expired' | 'disabled';
 }
 
@@ -232,20 +322,21 @@ export async function updateGuest(id: number, data: UpdateGuestData): Promise<bo
 }
 
 export async function decrementGuestUseCount(id: number): Promise<Guest | null> {
-  const guest = await getGuestById(id);
-  if (!guest) return null;
-
-  const newUseCount = Math.max(0, guest.useCount - 1);
-  const newStatus = newUseCount <= 0 ? 'exhausted' : guest.status;
-
   const database = await db();
-  await database.update(guests)
-    .set({
-      useCount: newUseCount,
-      status: newStatus,
-      updatedAt: sql`datetime('now', 'localtime')`,
-    })
-    .where(eq(guests.id, id));
+  const result = await database.run(sql`
+    UPDATE guests
+    SET
+      use_count = use_count - 1,
+      status = CASE
+        WHEN use_count - 1 <= 0 THEN 'exhausted'
+        ELSE status
+      END,
+      updated_at = datetime('now', 'localtime')
+    WHERE id = ${id} AND use_count > 0
+  `);
+
+  const changes = (result as any)?.changes ?? (result as any)?.meta?.changes;
+  if (!changes) return null;
 
   return getGuestById(id);
 }
@@ -277,15 +368,13 @@ export async function getAllSettings(): Promise<Record<string, string>> {
 export async function updateSetting(key: string, value: string): Promise<boolean> {
   // 使用 upsert 模式
   const database = await db();
-  const existing = await database.select().from(settings).where(eq(settings.key, key)).limit(1);
-  
-  if (existing.length > 0) {
-    await database.update(settings)
-      .set({ value, updatedAt: sql`datetime('now', 'localtime')` })
-      .where(eq(settings.key, key));
-  } else {
-    await database.insert(settings).values({ key, value });
-  }
+  await database.run(sql`
+    INSERT INTO settings (key, value, updated_at)
+    VALUES (${key}, ${value}, datetime('now', 'localtime'))
+    ON CONFLICT(key) DO UPDATE SET
+      value = excluded.value,
+      updated_at = datetime('now', 'localtime')
+  `);
   return true;
 }
 
@@ -334,7 +423,7 @@ export async function getUsageLogsByGuestId(guestId: number): Promise<UsageLog[]
 
 export interface CreateSubmissionLogData {
   guestId: number;
-  discountType: '24hour' | '5day';
+  discountType: '24hour' | '5day' | 'none';
   plateUsed: string;
   requestOk: boolean;
   remoteResultKey?: string;
@@ -474,7 +563,7 @@ export async function getUsageLogs(params: LogQueryParams): Promise<LogQueryResu
     ...log,
     guestName: guestMap.get(log.guestId)?.name ?? null,
     guestPhone: guestMap.get(log.guestId)?.phone ?? null,
-    guestRoom: guestMap.get(log.guestId)?.roomNumber ?? null,
+    guestRoom: guestMap.get(log.guestId)?.notes ?? null,
   }));
 
   return {
@@ -700,11 +789,12 @@ export async function initializeSettings(): Promise<void> {
     { key: 'referer_5day', value: '' },
     { key: 'post_params_24hour', value: '' },
     { key: 'post_params_5day', value: '' },
-    { key: 'default_use_count', value: '3' },
+    { key: 'default_use_count', value: '' },
     { key: 'error_redirect_url', value: '' },
-    // 日志设置
+    { key: 'pay_url', value: '' },
+    { key: 'pay_url_noplate', value: '' },
     { key: 'log_enabled', value: 'false' },
-    { key: 'log_retention_days', value: '7' },
+    { key: 'log_retention_days', value: '' },
   ];
 
   for (const setting of defaultSettings) {

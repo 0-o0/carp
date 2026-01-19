@@ -18,13 +18,13 @@ CREATE TABLE IF NOT EXISTS guests (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     phone TEXT NOT NULL,
-    room_number TEXT NOT NULL,
+    notes TEXT,
     plate_number TEXT,
     use_count INTEGER DEFAULT 3 NOT NULL,
     uses_default_snapshot INTEGER DEFAULT 3 NOT NULL,
     check_in_time TEXT NOT NULL,
     check_out_time TEXT NOT NULL,
-    discount_type TEXT CHECK(discount_type IN ('24hour', '5day')) NOT NULL,
+    discount_type TEXT CHECK(discount_type IN ('24hour', '5day', 'none')) NOT NULL,
     status TEXT CHECK(status IN ('active', 'exhausted', 'expired', 'disabled')) DEFAULT 'active' NOT NULL,
     created_by INTEGER REFERENCES admins(id),
     created_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL,
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS discount_configs (
 CREATE TABLE IF NOT EXISTS submission_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     guest_id INTEGER NOT NULL REFERENCES guests(id) ON DELETE CASCADE,
-    discount_type TEXT CHECK(discount_type IN ('24hour', '5day')) NOT NULL,
+    discount_type TEXT CHECK(discount_type IN ('24hour', '5day', 'none')) NOT NULL,
     plate_used TEXT NOT NULL,
     request_ok INTEGER DEFAULT 0 NOT NULL,
     remote_result_key TEXT,
@@ -90,10 +90,9 @@ CREATE TABLE IF NOT EXISTS usage_logs (
 -- 创建索引
 CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
 CREATE INDEX IF NOT EXISTS idx_guests_phone ON guests(phone);
-CREATE INDEX IF NOT EXISTS idx_guests_room ON guests(room_number);
 CREATE INDEX IF NOT EXISTS idx_guests_plate ON guests(plate_number);
 CREATE INDEX IF NOT EXISTS idx_guests_status ON guests(status);
-CREATE INDEX IF NOT EXISTS idx_guests_lookup ON guests(name, phone, room_number);
+CREATE INDEX IF NOT EXISTS idx_guests_lookup ON guests(name, phone);
 CREATE INDEX IF NOT EXISTS idx_submission_logs_created ON submission_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at);
 CREATE INDEX IF NOT EXISTS idx_usage_logs_created ON usage_logs(created_at);
@@ -109,7 +108,9 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('referer_5day', ''),
     ('post_params_24hour', ''),
     ('post_params_5day', ''),
-    ('default_use_count', '3'),
+    ('default_use_count', '10'),
     ('error_redirect_url', ''),
     ('log_enabled', 'false'),
-    ('log_retention_days', '7');
+    ('log_retention_days', '7'),
+    ('pay_url', ''),
+    ('pay_url_noplate', '');

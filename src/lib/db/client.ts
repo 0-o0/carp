@@ -21,7 +21,11 @@ export async function getLocalDb(): Promise<DrizzleDB> {
   }
 
   const { drizzle: drizzleSqlite } = await import('drizzle-orm/better-sqlite3');
-  const { default: Database } = await import('better-sqlite3');
+  const sqliteModule = await import('better-sqlite3');
+  const Database: any = (sqliteModule as any)?.default ?? sqliteModule;
+  if (typeof Database !== 'function') {
+    throw new Error('better-sqlite3 is not available in this runtime');
+  }
   const dbPath = process.env.DATABASE_URL?.replace('file:', '') || './dev.db';
   const sqlite = new Database(dbPath);
   

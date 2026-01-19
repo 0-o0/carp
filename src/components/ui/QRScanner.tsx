@@ -73,7 +73,8 @@ export function QRScanner({ onScan, label = '扫描二维码', placeholder = '�
       };
 
       reader.readAsDataURL(file);
-    } catch {
+    } catch (err) {
+      console.error('QR 识别过程出错:', err);
       setError('识别过程出错');
       setScanning(false);
     }

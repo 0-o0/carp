@@ -16,7 +16,7 @@ export default function DashPanelLayout({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [authVerified, setAuthVerified] = useState(false); // 新增：是否已验证认证状态
+  const [authVerified, setAuthVerified] = useState(false);
 
   const isLoginPage = pathname === '/dash-panel';
 

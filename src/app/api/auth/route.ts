@@ -113,13 +113,8 @@ export async function POST(request: NextRequest) {
       }
 
       // 检查是否需要修改默认密码
-      const needChangePassword = await verifyPassword(env.DEFAULT_ADMIN_PASSWORD, admin.password);
-
-      const token = await generateToken({
-        id: admin.id,
-        username: admin.username,
-        isSuperAdmin: false,
-      });
+      const usesDefaultPassword = await verifyPassword(env.DEFAULT_ADMIN_PASSWORD, admin.password);
+      const needChangePassword = admin.mustChangePassword || usesDefaultPassword;
 
       const response = okResponse({
         user: {
@@ -130,8 +125,15 @@ export async function POST(request: NextRequest) {
         needChangePassword,
       });
 
-      const cookieOptions = getAuthCookieOptions(isSecureRequest(request));
-      response.cookies.set('auth_token', token, cookieOptions);
+      if (!needChangePassword) {
+        const token = await generateToken({
+          id: admin.id,
+          username: admin.username,
+          isSuperAdmin: false,
+        });
+        const cookieOptions = getAuthCookieOptions(isSecureRequest(request));
+        response.cookies.set('auth_token', token, cookieOptions);
+      }
 
       return response;
     }

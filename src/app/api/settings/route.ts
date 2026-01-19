@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
-import { getAllSettings, updateSetting } from '@/lib/db';
+import { getAllSettings, getSetting, updateSetting } from '@/lib/db';
 import { updateDiscountUrl } from '@/lib/parking-api';
 import { errorResponse, okResponse } from '@/lib/api-response';
 
@@ -14,9 +14,17 @@ export async function GET(request: NextRequest) {
   try {
     const user = await authenticateRequest(request);
     if (!user) {
-      return errorResponse('UNAUTHORIZED', '未授权', 401);
+      const payUrl = await getSetting('pay_url');
+      const payUrlNoPlate = await getSetting('pay_url_noplate');
+      return okResponse({
+        settings: {
+          pay_url: payUrl || '',
+          pay_url_noplate: payUrlNoPlate || '',
+        },
+      });
     }
 
+    // 已登录管理员返回所有设置
     const settings = await getAllSettings();
     return okResponse({ settings });
   } catch (error) {

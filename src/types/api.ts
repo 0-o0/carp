@@ -3,6 +3,7 @@
 export interface ApiResponse {
   success: boolean;
   message?: string;
+  code?: string;
   [key: string]: unknown;
 }
 
@@ -26,22 +27,26 @@ export interface AdminsResponse extends ApiResponse {
   }>;
 }
 
+// 单个住客项类型定义
+export interface GuestItem {
+  id: number;
+  name: string;
+  phone: string;
+  notes: string | null;
+  plate_number: string | null;
+  use_count: number;
+  check_in_time: string;
+  check_out_time: string;
+  discount_type: '24hour' | '5day' | 'none';
+  status: 'active' | 'exhausted' | 'expired' | 'disabled';
+  created_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GuestsResponse extends ApiResponse {
-  guests?: Array<{
-    id: number;
-    name: string;
-    phone: string;
-    room_number: string;
-    plate_number: string | null;
-    use_count: number;
-    check_in_time: string;
-    check_out_time: string;
-    discount_type: '24hour' | '5day';
-    status: 'active' | 'exhausted' | 'expired' | 'disabled';
-    created_at: string;
-    updated_at: string;
-  }>;
-  guest?: GuestsResponse['guests'] extends Array<infer T> ? T : never;
+  guests?: GuestItem[];
+  guest?: GuestItem;
 }
 
 export interface SettingsResponse extends ApiResponse {
