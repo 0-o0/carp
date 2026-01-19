@@ -15,9 +15,10 @@ interface PlateInputProps {
   onChange: (value: string) => void;
   required?: boolean;
   disabled?: boolean;
+  keyboardAlign?: 'center' | 'right';
 }
 
-export function PlateInput({ value, onChange, required = false, disabled = false }: PlateInputProps) {
+export function PlateInput({ value, onChange, required = false, disabled = false, keyboardAlign = 'right' }: PlateInputProps) {
   const [province, setProvince] = useState('');
   const [boxes, setBoxes] = useState<string[]>(Array(7).fill(''));
   const [showProvinceKeyboard, setShowProvinceKeyboard] = useState(false);
@@ -257,10 +258,10 @@ export function PlateInput({ value, onChange, required = false, disabled = false
             className="fixed inset-0 bg-black/15 z-[9998]"
             onClick={() => setShowProvinceKeyboard(false)}
           />
-          <div className="fixed bottom-0 left-0 right-0 z-[9999] flex justify-center landscape:justify-end landscape:pr-[3%] landscape:pb-3">
+          <div className={`fixed bottom-0 left-0 right-0 z-[9999] flex justify-center landscape:pb-3 ${keyboardAlign === 'right' ? 'landscape:justify-end landscape:pr-[3%]' : ''}`}>
             <div 
               ref={keyboardRef}
-              className="w-full max-w-md landscape:w-[50vw] landscape:max-w-none landscape:rounded-[22px] rounded-t-[22px] overflow-hidden"
+              className={`w-full max-w-md rounded-t-[22px] overflow-hidden landscape:w-[50vw] landscape:max-w-none landscape:rounded-[22px]`}
               style={{ 
                 background: 'rgba(255, 255, 255, 0.38)',
                 backdropFilter: 'blur(24px) saturate(155%) contrast(110%)',

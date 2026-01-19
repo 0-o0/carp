@@ -658,6 +658,7 @@ export default function GuestsPage() {
             <PlateInput
               value={formData.plateNumber}
               onChange={value => setFormData({ ...formData, plateNumber: value })}
+              keyboardAlign="center"
             />
             {formErrors.plateNumber && (
               <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
@@ -751,6 +752,7 @@ export default function GuestsPage() {
             <PlateInput
               value={formData.plateNumber}
               onChange={value => setFormData({ ...formData, plateNumber: value })}
+              keyboardAlign="center"
             />
             {formErrors.plateNumber && (
               <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
