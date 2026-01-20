@@ -90,9 +90,8 @@ export default function Home() {
         setErrors({ plateNumber: '请填写您的车牌号' });
         setState('form');
       } else if (result.redirectUrl) {
-        setTimeout(() => {
-          window.location.href = result.redirectUrl!;
-        }, 500);
+        setState('form');
+        window.location.href = result.redirectUrl;
       } else {
         setErrorMessage(result.message || '提交失败，请稍后重试');
         setState('error');

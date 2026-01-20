@@ -1,4 +1,3 @@
-// 停车优惠 API - 封装对第三方停车系统的请求
 import { getSetting, updateSetting } from './db';
 
 // 请求配置
@@ -52,7 +51,13 @@ export interface ParkingRequestResult {
   success: boolean;
   message?: string;
   rawResponse?: string;
-  resultKey?: string;
+  discountInfo?: {
+    plate: string;
+    discountcharge: number;
+    needcharge: string;
+    entertime: string;
+    staytime: string;
+  };
 }
 
 /**
@@ -112,26 +117,44 @@ export async function sendParkingDiscount(
 
     const responseText = await response.text();
 
-    // 提取远程系统的 result_key
-    const resultKeyMatch = responseText.match(/"system_result_key"\s*:\s*"?(\d+)"?/);
-    const resultKey = resultKeyMatch ? resultKeyMatch[1] : undefined;
+    // 尝试解析 JSON 响应
+    let jsonResponse: Record<string, unknown> | null = null;
+    try {
+      jsonResponse = JSON.parse(responseText);
+    } catch {
+    }
 
-    // 检查响应
-    // 如果包含 "system_result_key":"0" 表示失败
-    if (responseText.includes('"system_result_key":"0"')) {
+
+    if (jsonResponse && 
+        typeof jsonResponse.info === 'object' && 
+        jsonResponse.info !== null &&
+        'discountcharge' in (jsonResponse.info as Record<string, unknown>)) {
+      const info = jsonResponse.info as Record<string, unknown>;
       return {
-        success: false,
-        message: '停车优惠申请失败',
+        success: true,
         rawResponse: responseText,
-        resultKey,
+        discountInfo: {
+          plate: String(info.plate || ''),
+          discountcharge: Number(info.discountcharge || 0),
+          needcharge: String(info.needcharge || '0'),
+          entertime: String(info.entertime || ''),
+          staytime: String(info.staytime || ''),
+        },
       };
     }
 
-    // 其他情况视为成功
+    let errorMessage = '停车优惠申请失败';
+    if (jsonResponse?.info && typeof jsonResponse.info === 'object') {
+      const info = jsonResponse.info as Record<string, unknown>;
+      if (info.errmsg && info.errmsg !== 'ok') {
+        errorMessage = String(info.errmsg);
+      }
+    }
+
     return {
-      success: true,
+      success: false,
+      message: errorMessage,
       rawResponse: responseText,
-      resultKey,
     };
   } catch (error) {
     console.error('停车优惠请求失败:', error);

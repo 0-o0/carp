@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
     if (!guest) {
       // 根据原因返回不同的错误提示
       if (reason === 'multiple_matches') {
-        // 存在多个匹配，建议用户提供更多信息
         return errorResponse('VALIDATION_ERROR', '存在多条相似记录，请同时填写姓名和手机号，或直接填写车牌号', 400);
       }
       return errorResponse('NOT_FOUND', '未找到您的登记信息，请联系前台工作人员', 404);
@@ -83,7 +82,6 @@ export async function POST(request: NextRequest) {
       return errorResponse('INTERNAL_ERROR', '系统数据异常，请联系前台工作人员', 500);
     }
     if (now > checkOutTime) {
-      // 更新状态为已超时
       await updateGuest(guest.id, { status: 'expired' });
       return errorResponse('FORBIDDEN', '您的住宿时间已过期，请联系前台工作人员', 403);
     }
@@ -115,28 +113,23 @@ export async function POST(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '车牌号格式不正确', 400);
     }
 
-    // 减少使用次数（不管请求成功与否都减少）
     await decrementGuestUseCount(guest.id);
 
     // 发送停车优惠请求
     const result = await sendParkingDiscount(finalPlateNumber, guest.discountType);
 
-    // 并行写入两种日志（性能优化，使用 allSettled 避免一个失败影响另一个）
     await Promise.allSettled([
-      // 使用记录日志
       createUsageLog({
         guestId: guest.id,
         plateNumber: finalPlateNumber,
         requestSuccess: result.success,
         responseData: result.rawResponse,
       }),
-      // 提交详情日志（含远程结果）
       createSubmissionLog({
         guestId: guest.id,
         discountType: guest.discountType,
         plateUsed: finalPlateNumber,
         requestOk: result.success,
-        remoteResultKey: result.resultKey,
         remoteRawSnippet: result.rawResponse?.substring(0, 500), // 限制长度
       }),
     ]);
@@ -144,7 +137,6 @@ export async function POST(request: NextRequest) {
     if (result.success) {
       return okResponse();
     } else {
-      // 请求失败，重定向到原优惠网页
       const urlKey = guest.discountType === '24hour' ? 'url_24hour' : 'url_5day';
       const redirectUrl = await getSetting(urlKey);
 
