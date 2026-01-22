@@ -1,28 +1,46 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, InputField, Modal, StatusBadge, ToggleSwitch, PlateInput, validatePlateNumber } from '@/components/ui';
 import { calculateDefaultCheckOutTimeShanghai, formatShanghaiDateTimeLocalInput, parseShanghaiDateTime } from '@/lib/datetime';
-import type { GuestsResponse, GuestItem } from '@/types/api';
+import type { GuestsResponse, GuestItem, SubmitResponse } from '@/types/api';
+
+// 优惠类型接口
+interface DiscountType {
+  id: number;
+  code: string;
+  name: string;
+  description: string | null;
+  color: string;
+  sortOrder: number;
+  isActive: boolean;
+  isSystem: boolean;
+}
 
 export default function GuestsPage() {
   const router = useRouter();
   const [guests, setGuests] = useState<GuestItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const loadGuestsInFlightRef = useRef(false);
   const [defaultUseCount, setDefaultUseCount] = useState(3);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingGuest, setEditingGuest] = useState<GuestItem | null>(null);
+  
+  // 动态优惠类型
+  const [discountTypes, setDiscountTypes] = useState<DiscountType[]>([]);
+  const selectableDiscountTypes = discountTypes.filter(t => t.code !== 'none');
+  
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
     notes: '',
     plateNumber: '',
     useCount: 3,
-    discountType: '24hour' as '24hour' | '5day' | 'none',
+    discountType: '',
     checkInTime: '',
     checkOutTime: '',
   });
@@ -32,6 +50,8 @@ export default function GuestsPage() {
 
   // 加载住客列表
   const loadGuests = useCallback(async () => {
+    if (loadGuestsInFlightRef.current) return;
+    loadGuestsInFlightRef.current = true;
     try {
       const url = searchQuery 
         ? `/api/guests?search=${encodeURIComponent(searchQuery)}`
@@ -39,6 +59,7 @@ export default function GuestsPage() {
       
       const response = await fetch(url, {
         credentials: 'include',
+        cache: 'no-store',
       });
       const result: GuestsResponse = await response.json();
 
@@ -53,6 +74,7 @@ export default function GuestsPage() {
     } catch (error) {
       console.error('加载住客列表失败:', error);
     } finally {
+      loadGuestsInFlightRef.current = false;
       setLoading(false);
     }
   }, [router, searchQuery]);
@@ -84,6 +106,37 @@ export default function GuestsPage() {
     loadDefaultUseCount();
   }, [router]);
 
+  // 加载优惠类型
+  useEffect(() => {
+    const loadDiscountTypes = async () => {
+      try {
+        const response = await fetch('/api/discount-types?activeOnly=true', { credentials: 'include' });
+        if (response.status === 401) {
+          router.push('/dash-panel');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.success && data.discountTypes) {
+          setDiscountTypes(data.discountTypes);
+        }
+      } catch (error) {
+        console.error('加载优惠类型失败:', error);
+      }
+    };
+
+    loadDiscountTypes();
+  }, [router]);
+
+  useEffect(() => {
+    if (selectableDiscountTypes.length === 0) return;
+    setFormData(prev => {
+      const exists = selectableDiscountTypes.some(t => t.code === prev.discountType);
+      if (exists) return prev;
+      return { ...prev, discountType: selectableDiscountTypes[0].code };
+    });
+  }, [selectableDiscountTypes]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       loadGuests();
@@ -97,10 +150,13 @@ export default function GuestsPage() {
     return guest.status === statusFilter;
   });
 
-  // 重置表单
-  const resetForm = () => {
+  // 重置表单 - 默认选择第一个优惠类型（因为录入的住客通常都有优惠）
+  const resetForm = useCallback(() => {
     const now = new Date();
     const checkOut = calculateDefaultCheckOutTimeShanghai(now);
+    
+    // 获取第一个可用的优惠类型，如果没有则为空
+    const defaultDiscountType = selectableDiscountTypes.length > 0 ? selectableDiscountTypes[0].code : '';
 
     setFormData({
       name: '',
@@ -108,12 +164,12 @@ export default function GuestsPage() {
       notes: '',
       plateNumber: '',
       useCount: defaultUseCount,
-      discountType: '24hour',
+      discountType: defaultDiscountType,
       checkInTime: formatShanghaiDateTimeLocalInput(now),
       checkOutTime: formatShanghaiDateTimeLocalInput(checkOut),
     });
     setFormErrors({});
-  };
+  }, [defaultUseCount, selectableDiscountTypes]);
 
   // 打开新增弹窗
   const openAddModal = () => {
@@ -147,6 +203,13 @@ export default function GuestsPage() {
     if (!formData.name.trim()) errors.name = '请输入姓名';
     if (!formData.phone.trim()) errors.phone = '请输入手机号';
     else if (!/^1[3-9]\d{9}$/.test(formData.phone)) errors.phone = '手机号格式不正确';
+    if (!formData.discountType) errors.discountType = '请选择优惠类型';
+    else if (
+      selectableDiscountTypes.length > 0 &&
+      !selectableDiscountTypes.some(t => t.code === formData.discountType)
+    ) {
+      errors.discountType = '优惠类型无效，请重新选择';
+    }
     if (formData.plateNumber && !validatePlateNumber(formData.plateNumber)) {
       errors.plateNumber = '车牌号格式不正确';
     }
@@ -162,8 +225,8 @@ export default function GuestsPage() {
       return;
     }
 
-    if (guest.discount_type === 'none') {
-      alert('该住客优惠类型为"无折扣"，无需提交优惠申请');
+    if (!guest.discount_type) {
+      alert('该住客未设置优惠类型，无法提交优惠申请');
       return;
     }
 
@@ -189,15 +252,21 @@ export default function GuestsPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          guestId: guest.id,
           plateNumber: guest.plate_number,
         }),
       });
 
-      const result = await response.json();
+      const result: SubmitResponse = await response.json();
 
       if (result.success) {
-        alert(`提交成功！\n${result.message || ''}`);
-        loadGuests();
+        const nextUseCount = typeof result.useCount === 'number' ? result.useCount : Math.max(0, guest.use_count - 1);
+        const nextStatus =
+          typeof result.status === 'string' ? result.status : (nextUseCount <= 0 ? 'exhausted' : guest.status);
+
+        // 立即更新本地状态，避免需要刷新页面
+        setGuests(prevGuests => prevGuests.map(g => (g.id === guest.id ? { ...g, use_count: nextUseCount, status: nextStatus } : g)));
+        alert(`提交成功！\n${result.message || '可用次数已扣减'}`);
       } else {
         alert(`提交失败：${result.message || '未知错误'}`);
       }
@@ -332,10 +401,47 @@ export default function GuestsPage() {
     return guest.status;
   };
 
+  // 获取优惠类型显示名称
+  const getDiscountTypeName = (code: string) => {
+    if (!code) return '-';
+    const type = discountTypes.find(t => t.code === code);
+    return type?.name || code;
+  };
+
+  // 获取优惠类型颜色 - 根据实际类型返回对应颜色
+  const getDiscountTypeColor = (code: string) => {
+    if (!code) return '#9CA3AF';
+    const type = discountTypes.find(t => t.code === code);
+    // 根据类型名称的关键字返回对应颜色主题
+    if (type?.color) {
+      const colorMap: Record<string, string> = {
+        'orange': '#F97316',
+        'purple': '#3B82F6', // 改为蓝色
+        'blue': '#3B82F6',
+        'green': '#3B82F6', // 改为蓝色
+        'red': '#EF4444',
+        'pink': '#F97316', // 改为橙色
+        'yellow': '#F59E0B',
+        'cyan': '#3B82F6', // 改为蓝色
+        'indigo': '#3B82F6', // 改为蓝色
+      };
+      return colorMap[type.color] || type.color;
+    }
+    return '#3B82F6';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">加载中...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500/20 to-blue-500/20 flex items-center justify-center">
+            <svg className="w-5 h-5 text-orange-400 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          </div>
+          <span className="text-slate-400 text-sm">加载住客列表...</span>
+        </div>
       </div>
     );
   }
@@ -343,49 +449,70 @@ export default function GuestsPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* 顶部统计卡片 - 响应式网格 */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="card border border-orange-100/80 bg-gradient-to-br from-orange-50/90 to-white/90 shadow-lg">
-          <p className="text-xs text-orange-600">可用住客</p>
-          <p className="text-2xl sm:text-3xl font-semibold text-orange-700 mt-1">{guests.filter(g => g.status === 'active' && g.use_count > 0).length}</p>
-          <p className="text-xs text-orange-500 mt-1">待处理申请快速放行</p>
+      <div className="grid gap-4 sm:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="glass-stat rounded-2xl p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-orange-400 uppercase tracking-wider">可用住客</p>
+              <p className="text-3xl sm:text-4xl font-bold text-orange-300 mt-2">{guests.filter(g => g.status === 'active' && g.use_count > 0).length}</p>
+              <p className="text-xs text-slate-400 mt-2">待处理申请快速放行</p>
+            </div>
+            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-xl shadow-lg shadow-orange-500/30">
+              🎫
+            </span>
+          </div>
         </div>
-        <div className="card border border-purple-100/80 bg-gradient-to-br from-purple-50/90 to-white/90 shadow-lg">
-          <p className="text-xs text-purple-700">总住客</p>
-          <p className="text-2xl sm:text-3xl font-semibold text-purple-700 mt-1">{guests.length}</p>
-          <p className="text-xs text-purple-500 mt-1">含禁用、超时、次数用尽</p>
+        <div className="glass-stat rounded-2xl p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">总住客</p>
+              <p className="text-3xl sm:text-4xl font-bold text-blue-300 mt-2">{guests.length}</p>
+              <p className="text-xs text-slate-400 mt-2">含禁用、超时、次数用尽</p>
+            </div>
+            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-blue-500/30">
+              👥
+            </span>
+          </div>
         </div>
-        <div className="card border border-emerald-100/80 bg-gradient-to-br from-emerald-50/90 to-white/90 shadow-lg sm:col-span-2 lg:col-span-1">
-          <p className="text-xs text-emerald-700">快捷操作</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button onClick={openAddModal} className="px-3 py-2 rounded-full bg-emerald-600 text-white text-sm shadow">
-              + 新增住客
-            </button>
-            <button onClick={() => loadGuests()} className="px-3 py-2 rounded-full bg-white text-emerald-700 text-sm border border-emerald-100">
-              刷新列表
-            </button>
+        <div className="glass-stat sm:col-span-2 lg:col-span-1 rounded-2xl p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">快捷操作</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button onClick={openAddModal} className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:from-orange-600 hover:to-orange-700 transition-all">
+                  + 新增住客
+                </button>
+                <button onClick={() => loadGuests()} className="px-4 py-2.5 rounded-xl bg-slate-800/60 text-blue-300 text-sm font-semibold border border-slate-600/50 hover:bg-slate-700/60 transition-all backdrop-blur-sm">
+                  🔄 刷新列表
+                </button>
+              </div>
+            </div>
+            <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xl shadow-lg shadow-blue-500/30">
+              ⚡
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="card shadow-xl border border-gray-100/80">
+      <div className="glass-card shadow-xl border border-slate-700/50 rounded-2xl">
         <div className="flex flex-col gap-4">
           {/* 标题区域 - 响应式 */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5">
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">住客管理</h1>
-              <p className="text-xs sm:text-sm text-gray-500">快速搜索、筛选并管理住客优惠资格</p>
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground">住客管理</h1>
+              <p className="text-xs sm:text-sm text-slate-400">快速搜索、筛选并管理住客优惠资格</p>
             </div>
             <div className="hidden sm:block">
-              <Button variant="orange" onClick={openAddModal}>
+              <Button variant="blue" onClick={openAddModal}>
                 + 新增住客
               </Button>
             </div>
           </div>
 
           {/* 搜索和筛选 - 响应式 */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 px-5 pb-5">
             <div className="search-box flex-1">
-              <svg className="w-5 h-5 text-gray-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-slate-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -393,7 +520,7 @@ export default function GuestsPage() {
                 placeholder="搜索姓名、手机号、房间号、车牌..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="flex-1 min-w-0"
+                className="flex-1 min-w-0 bg-transparent text-foreground placeholder:text-slate-500"
               />
             </div>
             <select
@@ -410,7 +537,7 @@ export default function GuestsPage() {
           </div>
 
           {/* 桌面端表格视图 */}
-          <div className="hidden lg:block rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="hidden lg:block rounded-2xl overflow-hidden mx-5 mb-5">
             <div className="overflow-x-auto">
               <table className="data-table">
                 <thead>
@@ -429,7 +556,7 @@ export default function GuestsPage() {
                 <tbody>
                   {filteredGuests.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="text-center text-gray-500 py-8">
+                      <td colSpan={9} className="text-center text-slate-400 py-8">
                         暂无数据
                       </td>
                     </tr>
@@ -440,41 +567,38 @@ export default function GuestsPage() {
                         <tr key={guest.id}>
                           <td>
                             <div>
-                              <div className="font-medium text-gray-900">{guest.name}</div>
-                              <div className="text-sm text-gray-500">{guest.phone}</div>
+                              <div className="font-medium text-foreground">{guest.name}</div>
+                              <div className="text-sm text-slate-400">{guest.phone}</div>
                             </div>
                           </td>
                           <td>
                             {guest.notes ? (
-                              <span className="text-gray-600 text-sm">{guest.notes}</span>
+                              <span className="text-slate-300 text-sm">{guest.notes}</span>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <span className="text-slate-500">-</span>
                             )}
                           </td>
                           <td>
                             {guest.plate_number ? (
-                              <span className="font-mono">{guest.plate_number}</span>
+                              <span className="font-mono text-slate-200">{guest.plate_number}</span>
                             ) : (
-                              <span className="text-gray-400">-</span>
+                              <span className="text-slate-500">-</span>
                             )}
                           </td>
                           <td>
-                            <span className={`font-medium ${guest.use_count <= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                            <span className={`font-medium ${guest.use_count <= 0 ? 'text-red-400' : 'text-blue-400'}`}>
                               {guest.use_count}
                             </span>
                           </td>
                           <td>
-                            <span className={`px-2 py-1 rounded text-xs ${
-                              guest.discount_type === '5day' 
-                                ? 'bg-blue-100 text-blue-700' 
-                                : guest.discount_type === 'none'
-                                ? 'bg-gray-100 text-gray-700'
-                                : 'bg-purple-100 text-purple-700'
-                            }`}>
-                              {guest.discount_type === '5day' ? '5天' : guest.discount_type === 'none' ? '无折扣' : '24小时'}
+                            <span 
+                              className="px-2 py-1 rounded-lg text-xs text-white"
+                              style={{ backgroundColor: getDiscountTypeColor(guest.discount_type) }}
+                            >
+                              {getDiscountTypeName(guest.discount_type)}
                             </span>
                           </td>
-                          <td className="text-sm text-gray-600">
+                          <td className="text-sm text-slate-400">
                             {formatDate(guest.check_out_time)}
                           </td>
                           <td>
@@ -488,29 +612,33 @@ export default function GuestsPage() {
                           </td>
                           <td>
                             <div className="flex items-center gap-2">
-                              {guest.plate_number && guest.discount_type !== 'none' && status === 'active' && (
+                              {guest.plate_number && guest.discount_type && status === 'active' && (
                                 <button
                                   onClick={() => handleAssistSubmit(guest)}
                                   disabled={assistSubmitting === guest.id}
-                                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                  className="px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg hover:from-orange-600 hover:to-orange-700 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed shadow-sm hover:shadow-md transition-all"
                                   title="辅助提交优惠申请"
                                 >
-                                  {assistSubmitting === guest.id ? '提交中...' : '辅助提交'}
+                                  {assistSubmitting === guest.id ? '提交中...' : '🚀 辅助提交'}
                                 </button>
                               )}
                               <button
                                 onClick={() => openEditModal(guest)}
-                                className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all"
                                 title="编辑"
                               >
-                                ✏️
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
                               </button>
                               <button
                                 onClick={() => handleDelete(guest.id)}
-                                className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                                className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                                 title="删除"
                               >
-                                🗑️
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
                               </button>
                             </div>
                           </td>
@@ -524,94 +652,104 @@ export default function GuestsPage() {
           </div>
 
           {/* 移动端/平板端卡片视图 */}
-          <div className="lg:hidden space-y-3">
+          <div className="lg:hidden space-y-4 px-5 pb-5">
             {filteredGuests.length === 0 ? (
-              <div className="text-center text-gray-500 py-8">暂无数据</div>
+              <div className="text-center text-slate-400 py-12 bg-slate-800/50 rounded-2xl border border-slate-700/50">
+                <span className="text-4xl mb-3 block">📋</span>
+                暂无数据
+              </div>
             ) : (
               filteredGuests.map(guest => {
                 const status = getStatus(guest);
                 return (
-                  <div key={guest.id} className="p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <div key={guest.id} className="p-5 glass-card rounded-2xl">
                     {/* 卡片头部 */}
-                    <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-start justify-between gap-3 mb-4">
                       <div className="flex items-center gap-3 min-w-0">
-                        <span className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-400 flex items-center justify-center text-white text-sm font-bold flex-shrink-0">
+                        <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold flex-shrink-0 shadow-lg shadow-orange-500/20">
                           {guest.name.charAt(0)}
                         </span>
                         <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 truncate">{guest.name}</div>
-                          <div className="text-sm text-gray-500">{guest.phone}</div>
+                          <div className="font-bold text-foreground truncate">{guest.name}</div>
+                          <div className="text-sm text-slate-400">{guest.phone}</div>
                         </div>
                       </div>
                       <StatusBadge status={status} />
                     </div>
 
                     {/* 卡片详情 */}
-                    <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                      <div>
-                        <span className="text-gray-500">备注: </span>
-                        <span className="font-medium text-gray-900">{guest.notes || '-'}</span>
+                    <div className="grid grid-cols-2 gap-3 text-sm mb-4">
+                      <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
+                        <span className="text-slate-500 text-xs uppercase tracking-wider">备注</span>
+                        <div className="font-medium text-foreground mt-0.5 truncate">{guest.notes || '-'}</div>
                       </div>
-                      <div>
-                        <span className="text-gray-500">剩余: </span>
-                        <span className={`font-medium ${guest.use_count <= 0 ? 'text-red-500' : 'text-green-600'}`}>
+                      <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
+                        <span className="text-slate-500 text-xs uppercase tracking-wider">剩余</span>
+                        <div className={`font-bold mt-0.5 ${guest.use_count <= 0 ? 'text-red-400' : 'text-blue-400'}`}>
                           {guest.use_count} 次
-                        </span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="text-gray-500">车牌: </span>
-                        <span className="font-mono text-gray-900">{guest.plate_number || '-'}</span>
+                      <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
+                        <span className="text-slate-500 text-xs uppercase tracking-wider">车牌</span>
+                        <div className="font-mono text-foreground mt-0.5">{guest.plate_number || '-'}</div>
                       </div>
-                      <div>
-                        <span className={`px-2 py-0.5 rounded text-xs ${
-                          guest.discount_type === '5day' 
-                            ? 'bg-blue-100 text-blue-700' 
-                            : guest.discount_type === 'none'
-                            ? 'bg-gray-100 text-gray-700'
-                            : 'bg-purple-100 text-purple-700'
-                        }`}>
-                          {guest.discount_type === '5day' ? '5天优惠' : guest.discount_type === 'none' ? '无折扣' : '24小时'}
-                        </span>
+                      <div className="bg-slate-800/50 rounded-xl p-3 border border-slate-700/30">
+                        <span className="text-slate-500 text-xs uppercase tracking-wider">优惠</span>
+                        <div className="mt-0.5">
+                          <span 
+                            className="px-2 py-0.5 rounded-full text-xs font-semibold text-white"
+                            style={{ backgroundColor: getDiscountTypeColor(guest.discount_type) }}
+                          >
+                            {getDiscountTypeName(guest.discount_type)}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="text-xs text-gray-500 mb-3">
+                    <div className="text-xs text-slate-500 mb-4 flex items-center gap-1">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
                       离店: {formatDate(guest.check_out_time)}
                     </div>
 
                     {/* 卡片操作 */}
-                    <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">启用</span>
+                    <div className="flex items-center justify-between pt-4 border-t border-slate-700/50">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-slate-500">启用</span>
                         <ToggleSwitch
                           checked={guest.status !== 'disabled'}
                           onChange={() => toggleStatus(guest)}
                         />
                       </div>
                       <div className="flex items-center gap-1">
-                        {guest.plate_number && guest.discount_type !== 'none' && status === 'active' && (
+                        {guest.plate_number && guest.discount_type && status === 'active' && (
                           <button
                             onClick={() => handleAssistSubmit(guest)}
                             disabled={assistSubmitting === guest.id}
-                            className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            className="px-3 py-2 text-xs font-semibold bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl hover:from-orange-600 hover:to-orange-700 disabled:from-slate-600 disabled:to-slate-600 disabled:cursor-not-allowed shadow-sm transition-all"
                             title="辅助提交"
                           >
-                            {assistSubmitting === guest.id ? '...' : '辅助提交'}
+                            {assistSubmitting === guest.id ? '...' : '🚀 提交'}
                           </button>
                         )}
                         <button
                           onClick={() => openEditModal(guest)}
-                          className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
+                          className="p-2.5 text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-xl transition-all"
                           title="编辑"
                         >
-                          ✏️
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
                         </button>
                         <button
                           onClick={() => handleDelete(guest.id)}
-                          className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                          className="p-2.5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all"
                           title="删除"
                         >
-                          🗑️
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -652,8 +790,8 @@ export default function GuestsPage() {
             onChange={e => setFormData({ ...formData, notes: e.target.value })}
           />
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              车牌号 <span className="text-gray-400">(可选)</span>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              车牌号 <span className="text-slate-400">(可选)</span>
             </label>
             <PlateInput
               value={formData.plateNumber}
@@ -661,22 +799,31 @@ export default function GuestsPage() {
               keyboardAlign="center"
             />
             {formErrors.plateNumber && (
-              <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
+              <p className="text-sm text-red-400 mt-1">{formErrors.plateNumber}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              优惠类型
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              优惠类型 <span className="text-red-400">*</span>
             </label>
             <select
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+              className="w-full px-4 py-3 rounded-xl border border-slate-700 bg-slate-800 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               value={formData.discountType}
-              onChange={e => setFormData({ ...formData, discountType: e.target.value as '24hour' | '5day' | 'none' })}
+              onChange={e => setFormData({ ...formData, discountType: e.target.value })}
+              required
             >
-              <option value="24hour">24小时优惠</option>
-              <option value="5day">5天优惠</option>
-              <option value="none">无折扣</option>
+              <option value="" disabled>
+                {selectableDiscountTypes.length === 0 ? '加载中...' : '请选择优惠类型'}
+              </option>
+              {selectableDiscountTypes.map(type => (
+                <option key={type.code} value={type.code}>
+                  {type.name}
+                </option>
+              ))}
             </select>
+            {formErrors.discountType && (
+              <p className="text-sm text-red-400 mt-1">{formErrors.discountType}</p>
+            )}
           </div>
           <InputField
             label="可用次数"
@@ -703,14 +850,14 @@ export default function GuestsPage() {
           </div>
 
           {formErrors.form && (
-            <p className="text-sm text-red-500">{formErrors.form}</p>
+            <p className="text-sm text-red-400">{formErrors.form}</p>
           )}
 
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => setShowAddModal(false)} className="flex-1">
               取消
             </Button>
-            <Button variant="orange" onClick={handleAdd} loading={submitting} className="flex-1">
+            <Button variant="blue" onClick={handleAdd} loading={submitting} className="flex-1">
               确认新增
             </Button>
           </div>
@@ -746,8 +893,8 @@ export default function GuestsPage() {
             onChange={e => setFormData({ ...formData, notes: e.target.value })}
           />
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              车牌号 <span className="text-gray-400">(可选)</span>
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              车牌号 <span className="text-slate-400">(可选)</span>
             </label>
             <PlateInput
               value={formData.plateNumber}
@@ -755,22 +902,31 @@ export default function GuestsPage() {
               keyboardAlign="center"
             />
             {formErrors.plateNumber && (
-              <p className="text-sm text-red-500 mt-1">{formErrors.plateNumber}</p>
+              <p className="text-sm text-red-400 mt-1">{formErrors.plateNumber}</p>
             )}
           </div>
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
-              优惠类型
+            <label className="block text-sm font-semibold text-foreground mb-2">
+              优惠类型 <span className="text-red-400">*</span>
             </label>
             <select
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400"
+              className="w-full px-4 py-3 rounded-xl border border-slate-700 bg-slate-800 text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
               value={formData.discountType}
-              onChange={e => setFormData({ ...formData, discountType: e.target.value as '24hour' | '5day' | 'none' })}
+              onChange={e => setFormData({ ...formData, discountType: e.target.value })}
+              required
             >
-              <option value="24hour">24小时优惠</option>
-              <option value="5day">5天优惠</option>
-              <option value="none">无折扣</option>
+              <option value="" disabled>
+                {selectableDiscountTypes.length === 0 ? '加载中...' : '请选择优惠类型'}
+              </option>
+              {selectableDiscountTypes.map(type => (
+                <option key={type.code} value={type.code}>
+                  {type.name}
+                </option>
+              ))}
             </select>
+            {formErrors.discountType && (
+              <p className="text-sm text-red-400 mt-1">{formErrors.discountType}</p>
+            )}
           </div>
           <InputField
             label="可用次数"
@@ -797,14 +953,14 @@ export default function GuestsPage() {
           </div>
 
           {formErrors.form && (
-            <p className="text-sm text-red-500">{formErrors.form}</p>
+            <p className="text-sm text-red-400">{formErrors.form}</p>
           )}
 
           <div className="flex gap-3 pt-4">
             <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1">
               取消
             </Button>
-            <Button variant="orange" onClick={handleEdit} loading={submitting} className="flex-1">
+            <Button variant="blue" onClick={handleEdit} loading={submitting} className="flex-1">
               保存修改
             </Button>
           </div>

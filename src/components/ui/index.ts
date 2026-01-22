@@ -7,4 +7,5 @@ export { StatusBadge } from './StatusBadge';
 export { ToggleSwitch } from './ToggleSwitch';
 export { Modal } from './Modal';
 export { Confetti } from './Confetti';
-export { QRScanner } from './QRScanner';
+export { QRScanner, type ScanTarget } from './QRScanner';
+export { ThemeInitializer } from './ThemeInitializer';

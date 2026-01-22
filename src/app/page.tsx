@@ -138,22 +138,25 @@ export default function Home() {
         <Confetti />
         {/* 移动端：垂直居中卡片 */}
         <div className="lg:hidden min-h-screen flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 text-center border border-white/60">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
+          <div 
+            className="w-full max-w-sm glass-modal p-8 text-center"
+            style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          >
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-xl shadow-blue-500/30">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">申请成功</h1>
-            <p className="text-lg text-gray-600 mb-6">欢迎下次光临</p>
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200/60 mb-8">
-              <p className="text-amber-700 flex items-center justify-center gap-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">申请成功</h1>
+            <p className="text-lg text-slate-300 mb-6">欢迎下次光临</p>
+            <div className="bg-orange-500/20 rounded-2xl p-4 border border-orange-500/30 mb-8 backdrop-blur-sm">
+              <p className="text-orange-300 flex items-center justify-center gap-2">
                 <span className="text-xl">⏰</span>
                 <span>请在 <strong>30分钟内</strong> 离开停车场</span>
               </p>
-              <p className="text-sm text-amber-600 mt-1">超时将恢复正常计费</p>
+              <p className="text-sm text-orange-400/80 mt-1">超时将恢复正常计费</p>
             </div>
-            <button onClick={resetToForm} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-colors">
+            <button onClick={resetToForm} className="btn-primary">
               返回首页
             </button>
           </div>
@@ -164,55 +167,58 @@ export default function Home() {
           {/* 左侧 - 品牌/装饰区 */}
           <div className="w-1/2 xl:w-3/5 relative flex items-center justify-center p-12">
             <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -left-32 top-20 w-[600px] h-[600px] rounded-full blur-3xl bg-gradient-to-br from-green-300/50 to-emerald-200/40" />
-              <div className="absolute right-0 bottom-0 w-[500px] h-[500px] rounded-full blur-3xl bg-gradient-to-tl from-teal-200/50 to-cyan-100/40" />
+              <div className="absolute -left-32 top-20 w-[600px] h-[600px] rounded-full bg-gradient-to-br from-blue-500/20 to-blue-400/15" />
+              <div className="absolute right-0 bottom-0 w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-orange-500/15 to-orange-400/10" />
             </div>
             <div className="relative text-center max-w-lg">
-              <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-2xl shadow-green-500/30">
+              <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-2xl shadow-blue-500/30">
                 <svg className="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h1 className="text-5xl xl:text-6xl font-bold text-gray-900 mb-4">申请成功！</h1>
-              <p className="text-xl text-gray-600">感谢您的使用，欢迎下次光临</p>
+              <h1 className="text-5xl xl:text-6xl font-bold text-foreground mb-4">申请成功！</h1>
+              <p className="text-xl text-slate-300">感谢您的使用，欢迎下次光临</p>
             </div>
           </div>
 
           {/* 右侧 - 信息区 */}
-          <div className="w-1/2 xl:w-2/5 bg-white/80 backdrop-blur-xl flex items-center justify-center p-12">
+          <div 
+            className="w-1/2 xl:w-2/5 bg-slate-900/80 backdrop-blur-2xl flex items-center justify-center p-12 border-l border-slate-700/50"
+            style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          >
             <div className="w-full max-w-md">
-              <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl p-8 border border-amber-200/60 mb-8">
+              <div className="bg-orange-500/15 rounded-3xl p-8 border border-orange-500/30 mb-8 shadow-lg">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-2xl bg-amber-400 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
                     <span className="text-3xl">⏰</span>
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-amber-800">30 分钟</p>
-                    <p className="text-amber-600">离场时间限制</p>
+                    <p className="text-2xl font-bold text-orange-300">30 分钟</p>
+                    <p className="text-orange-400/80">离场时间限制</p>
                   </div>
                 </div>
-                <p className="text-amber-700">请在规定时间内离开停车场，超时将恢复正常计费标准。</p>
+                <p className="text-orange-300/80">请在规定时间内离开停车场，超时将恢复正常计费标准。</p>
               </div>
 
-              <div className="bg-gray-50 rounded-3xl p-8 mb-8">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg">温馨提示</h3>
-                <ul className="space-y-3 text-gray-600">
+              <div className="glass-card p-8 mb-8 rounded-2xl">
+                <h3 className="font-bold text-foreground mb-4 text-lg">温馨提示</h3>
+                <ul className="space-y-3 text-slate-300">
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
                     <span>优惠已成功应用到您的车辆</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
                     <span>请保持车牌清晰可识别</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
+                    <span className="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center flex-shrink-0 mt-0.5">✓</span>
                     <span>如有问题请联系前台</span>
                   </li>
                 </ul>
               </div>
 
-              <button onClick={resetToForm} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-colors">
+              <button onClick={resetToForm} className="btn-primary">
                 返回首页
               </button>
             </div>
@@ -227,18 +233,21 @@ export default function Home() {
       <GradientBackground className="min-h-screen">
         {/* 移动端 */}
         <div className="lg:hidden min-h-screen flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-8 text-center border border-white/60">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center">
+          <div 
+            className="w-full max-w-sm glass-modal p-8 text-center"
+            style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          >
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-xl shadow-red-500/30">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">申请未成功</h1>
-            <p className="text-gray-600 mb-6">{errorMessage}</p>
-            <div className="bg-gray-50 rounded-2xl p-4 mb-8">
-              <p className="text-gray-500 text-sm">如有疑问，请联系前台工作人员</p>
+            <h1 className="text-2xl font-bold text-foreground mb-2">申请未成功</h1>
+            <p className="text-slate-300 mb-6">{errorMessage}</p>
+            <div className="glass-card p-4 mb-8 rounded-xl">
+              <p className="text-slate-400 text-sm">如有疑问，请联系前台工作人员</p>
             </div>
-            <button onClick={resetToForm} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-colors">
+            <button onClick={resetToForm} className="btn-primary">
               重新填写
             </button>
           </div>
@@ -248,8 +257,8 @@ export default function Home() {
         <div className="hidden lg:flex min-h-screen">
           <div className="w-1/2 xl:w-3/5 relative flex items-center justify-center p-12">
             <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -right-32 top-20 w-[500px] h-[500px] rounded-full blur-3xl bg-red-200/50" />
-              <div className="absolute left-0 bottom-0 w-[400px] h-[400px] rounded-full blur-3xl bg-orange-100/60" />
+              <div className="absolute -right-32 top-20 w-[500px] h-[500px] rounded-full bg-red-500/20" />
+              <div className="absolute left-0 bottom-0 w-[400px] h-[400px] rounded-full bg-orange-500/15" />
             </div>
             <div className="relative text-center max-w-lg">
               <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-gradient-to-br from-red-400 to-rose-500 flex items-center justify-center shadow-2xl shadow-red-500/30">
@@ -257,37 +266,40 @@ export default function Home() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </div>
-              <h1 className="text-5xl xl:text-6xl font-bold text-gray-900 mb-4">抱歉</h1>
-              <p className="text-xl text-gray-600">申请未能成功处理</p>
+              <h1 className="text-5xl xl:text-6xl font-bold text-foreground mb-4">抱歉</h1>
+              <p className="text-xl text-slate-300">申请未能成功处理</p>
             </div>
           </div>
 
-          <div className="w-1/2 xl:w-2/5 bg-white/80 backdrop-blur-xl flex items-center justify-center p-12">
+          <div 
+            className="w-1/2 xl:w-2/5 bg-slate-900/80 backdrop-blur-2xl flex items-center justify-center p-12 border-l border-slate-700/50"
+            style={{ WebkitBackdropFilter: 'blur(24px) saturate(160%)' }}
+          >
             <div className="w-full max-w-md">
-              <div className="bg-red-50 rounded-3xl p-8 border border-red-100 mb-8">
-                <h3 className="font-bold text-red-800 mb-3 text-lg">错误信息</h3>
-                <p className="text-red-700">{errorMessage}</p>
+              <div className="bg-red-500/15 rounded-3xl p-8 border border-red-500/30 mb-8 shadow-lg">
+                <h3 className="font-bold text-red-400 mb-3 text-lg">错误信息</h3>
+                <p className="text-red-300">{errorMessage}</p>
               </div>
 
-              <div className="bg-gray-50 rounded-3xl p-8 mb-8">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg">可能的原因</h3>
-                <ul className="space-y-3 text-gray-600">
+              <div className="glass-card p-8 mb-8">
+                <h3 className="font-bold text-foreground mb-4 text-lg">可能的原因</h3>
+                <ul className="space-y-3 text-slate-300">
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">1</span>
+                    <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">1</span>
                     <span>登记信息不匹配</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">2</span>
+                    <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">2</span>
                     <span>优惠次数已用完</span>
                   </li>
                   <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">3</span>
+                    <span className="w-6 h-6 rounded-full bg-slate-700 text-slate-400 flex items-center justify-center flex-shrink-0 mt-0.5 text-sm">3</span>
                     <span>住宿时间已过期</span>
                   </li>
                 </ul>
               </div>
 
-              <button onClick={resetToForm} className="w-full py-5 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 transition-colors">
+              <button onClick={resetToForm} className="btn-primary">
                 重新填写
               </button>
             </div>
@@ -304,71 +316,74 @@ export default function Home() {
         {/* 顶部装饰区 */}
         <div className="relative pt-12 pb-8 px-6 text-center">
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -left-20 -top-20 w-64 h-64 rounded-full blur-3xl bg-purple-300/40" />
-            <div className="absolute right-0 top-0 w-48 h-48 rounded-full blur-3xl bg-orange-200/50" />
+            <div className="absolute -left-20 -top-20 w-64 h-64 rounded-full bg-blue-500/15" />
+            <div className="absolute right-0 top-0 w-48 h-48 rounded-full bg-orange-500/15" />
           </div>
           <div className="relative">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-lg shadow-purple-500/30">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-xl shadow-orange-500/30">
               <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">住客停车优惠</h1>
-            <p className="text-gray-500 mt-1">请填写信息申请优惠</p>
+            <h1 className="text-2xl font-bold text-foreground">住客停车优惠</h1>
+            <p className="text-slate-400 mt-1">请填写信息申请优惠</p>
           </div>
         </div>
 
         {/* 表单区域 */}
         <div className="flex-1 px-4 pb-8">
-          <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-xl p-6 border border-white/60">
+          <div 
+            className="glass-modal p-6 rounded-2xl"
+            style={{ WebkitBackdropFilter: 'blur(24px)' }}
+          >
             {errors.form && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl">
-                <p className="text-red-600 text-sm">{errors.form}</p>
+              <div className="mb-4 p-3 bg-red-500/15 border border-red-500/30 rounded-xl backdrop-blur-sm">
+                <p className="text-red-400 text-sm">{errors.form}</p>
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">姓名 <span className="text-gray-400 font-normal">(可选)</span></label>
+                <label className="block text-sm font-bold text-foreground mb-2">姓名 <span className="text-slate-500 font-normal">(可选)</span></label>
                 <input
                   type="text"
                   placeholder="请输入姓名"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-4 py-3.5 bg-white border-2 ${errors.name ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all`}
+                  className={`input-field ${errors.name ? 'border-red-500/50 bg-red-500/10' : ''}`}
                 />
-                {errors.name && <p className="text-red-500 text-sm mt-1.5">{errors.name}</p>}
+                {errors.name && <p className="text-red-400 text-sm mt-1.5">{errors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">手机号 <span className="text-gray-400 font-normal">(可选)</span></label>
+                <label className="block text-sm font-bold text-foreground mb-2">手机号 <span className="text-slate-500 font-normal">(可选)</span></label>
                 <input
                   type="tel"
                   placeholder="请输入手机号"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   maxLength={11}
-                  className={`w-full px-4 py-3.5 bg-white border-2 ${errors.phone ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-400 focus:ring-4 focus:ring-purple-100 transition-all`}
+                  className={`input-field ${errors.phone ? 'border-red-500/50 bg-red-500/10' : ''}`}
                 />
-                {errors.phone && <p className="text-red-500 text-sm mt-1.5">{errors.phone}</p>}
+                {errors.phone && <p className="text-red-400 text-sm mt-1.5">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">
-                  车牌号 {plateRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">(可选)</span>}
+                <label className="block text-sm font-bold text-foreground mb-2">
+                  车牌号 {plateRequired ? <span className="text-red-400">*</span> : <span className="text-slate-500 font-normal">(可选)</span>}
                 </label>
                 <PlateInput
                   value={formData.plateNumber}
                   onChange={value => setFormData({ ...formData, plateNumber: value })}
                   required={plateRequired}
                 />
-                {errors.plateNumber && <p className="text-red-500 text-sm mt-1.5">{errors.plateNumber}</p>}
-                <p className="text-xs text-gray-400 mt-1">💡 后台已录入车牌？只填姓名或手机号即可</p>
+                {errors.plateNumber && <p className="text-red-400 text-sm mt-1.5">{errors.plateNumber}</p>}
+                <p className="text-xs text-slate-500 mt-1">💡 后台已录入车牌？只填姓名或手机号即可</p>
               </div>
 
               <button
                 type="submit"
                 disabled={state === 'loading'}
-                className="w-full py-4 bg-gray-900 text-white rounded-xl font-semibold text-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-lg shadow-gray-900/20"
+                className="btn-primary"
               >
                 {state === 'loading' ? (
                   <span className="flex items-center justify-center gap-2">
@@ -385,10 +400,10 @@ export default function Home() {
             {/* 分隔线 */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-slate-700/60"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white text-gray-400">非住客请选择</span>
+                <span className="px-3 bg-slate-800/80 text-slate-400 rounded-full">非住客请选择</span>
               </div>
             </div>
 
@@ -397,7 +412,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={goToPay}
-                className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -407,7 +422,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={goToPayNoPlate}
-                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-slate-700/60 text-slate-300 rounded-xl font-medium hover:bg-slate-700/80 transition-all flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -416,7 +431,7 @@ export default function Home() {
               </button>
             </div>
 
-            <p className="text-center text-sm text-gray-400 mt-5">
+            <p className="text-center text-sm text-slate-400 mt-5">
               如有疑问请联系前台工作人员
             </p>
           </div>
@@ -429,114 +444,117 @@ export default function Home() {
         <div className="w-1/2 xl:w-3/5 relative flex items-center justify-center p-12 xl:p-20">
           {/* 背景装饰 */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute -left-40 top-20 w-[700px] h-[700px] rounded-full blur-3xl bg-gradient-to-br from-purple-300/50 to-violet-200/40" />
-            <div className="absolute right-0 bottom-0 w-[500px] h-[500px] rounded-full blur-3xl bg-gradient-to-tl from-orange-200/60 to-amber-100/50" />
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full blur-3xl bg-gradient-to-r from-pink-200/40 to-rose-100/30" />
+            <div className="absolute -left-40 top-20 w-[700px] h-[700px] rounded-full bg-gradient-to-br from-blue-500/15 to-blue-400/10" />
+            <div className="absolute right-0 bottom-0 w-[500px] h-[500px] rounded-full bg-gradient-to-tl from-orange-500/15 to-orange-400/10" />
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-gradient-to-r from-blue-500/10 to-orange-500/10" />
           </div>
 
           {/* 品牌内容 */}
           <div className="relative z-10 max-w-xl">
             {/* Logo */}
-            <div className="w-20 h-20 mb-8 rounded-3xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-2xl shadow-purple-500/30">
+            <div className="w-20 h-20 mb-8 rounded-3xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-2xl shadow-orange-500/30">
               <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
               </svg>
             </div>
 
-            <h1 className="text-5xl xl:text-6xl font-bold text-gray-900 leading-tight mb-6">
+            <h1 className="text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
               住客停车<br />优惠服务
             </h1>
 
-            <p className="text-xl text-gray-600 mb-12 leading-relaxed">
+            <p className="text-xl text-slate-300 mb-12 leading-relaxed">
               专为酒店住客提供的便捷停车优惠申请服务。<br />
               只需填写基本信息，即可享受专属停车优惠。
             </p>
 
             {/* 特性卡片 */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-5 border border-white/80">
-                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-card p-5 rounded-2xl" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-400/15 flex items-center justify-center mb-3 shadow-sm">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">快速申请</h3>
-                <p className="text-sm text-gray-500">30秒完成申请</p>
+                <h3 className="font-bold text-foreground mb-1">快速申请</h3>
+                <p className="text-sm text-slate-400">30秒完成申请</p>
               </div>
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-5 border border-white/80">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-card p-5 rounded-2xl" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500/20 to-blue-400/15 flex items-center justify-center mb-3 shadow-sm">
+                  <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">安全可靠</h3>
-                <p className="text-sm text-gray-500">信息加密传输</p>
+                <h3 className="font-bold text-foreground mb-1">安全可靠</h3>
+                <p className="text-sm text-slate-400">信息加密传输</p>
               </div>
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-5 border border-white/80">
-                <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-card p-5 rounded-2xl" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-400/15 flex items-center justify-center mb-3 shadow-sm">
+                  <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">即时生效</h3>
-                <p className="text-sm text-gray-500">申请后立即可用</p>
+                <h3 className="font-bold text-foreground mb-1">即时生效</h3>
+                <p className="text-sm text-slate-400">申请后立即可用</p>
               </div>
-              <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-5 border border-white/80">
-                <div className="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-3">
-                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-card p-5 rounded-2xl" style={{ WebkitBackdropFilter: 'blur(12px)' }}>
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-400/15 flex items-center justify-center mb-3 shadow-sm">
+                  <svg className="w-6 h-6 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
-                <h3 className="font-bold text-gray-900 mb-1">专属服务</h3>
-                <p className="text-sm text-gray-500">住客专享优惠</p>
+                <h3 className="font-bold text-foreground mb-1">专属服务</h3>
+                <p className="text-sm text-slate-400">住客专享优惠</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* 右侧 - 表单区 */}
-        <div className="w-1/2 xl:w-2/5 bg-white/80 backdrop-blur-xl flex items-center justify-center p-8 xl:p-12">
+        <div 
+          className="w-1/2 xl:w-2/5 bg-slate-900/80 backdrop-blur-2xl flex items-center justify-center p-8 xl:p-12 border-l border-slate-700/50"
+          style={{ WebkitBackdropFilter: 'blur(24px)' }}
+        >
           <div className="w-full max-w-md">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">填写信息</h2>
-              <p className="text-gray-500">填写姓名+手机号 或 车牌号即可申请</p>
+              <h2 className="text-3xl font-bold text-foreground mb-2">填写信息</h2>
+              <p className="text-slate-400">填写姓名+手机号 或 车牌号即可申请</p>
             </div>
 
             {errors.form && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+              <div className="mb-6 p-4 bg-red-50/80 border border-red-200/60 rounded-xl backdrop-blur-sm">
                 <p className="text-red-600 text-sm">{errors.form}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">姓名 <span className="text-gray-400 font-normal">(可选)</span></label>
+                <label className="block text-sm font-bold text-slate-800 mb-2">姓名 <span className="text-slate-400 font-normal">(可选)</span></label>
                 <input
                   type="text"
                   placeholder="请输入您的姓名"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className={`w-full px-5 py-4 bg-white border-2 ${errors.name ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300 transition-all`}
+                  className={`input-field ${errors.name ? 'border-red-300 bg-red-50/30' : ''}`}
                 />
                 {errors.name && <p className="text-red-500 text-sm mt-2">{errors.name}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">手机号 <span className="text-gray-400 font-normal">(可选)</span></label>
+                <label className="block text-sm font-bold text-slate-800 mb-2">手机号 <span className="text-slate-400 font-normal">(可选)</span></label>
                 <input
                   type="tel"
                   placeholder="请输入11位手机号"
                   value={formData.phone}
                   onChange={e => setFormData({ ...formData, phone: e.target.value })}
                   maxLength={11}
-                  className={`w-full px-5 py-4 bg-white border-2 ${errors.phone ? 'border-red-300 bg-red-50/30' : 'border-gray-200'} rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 hover:border-gray-300 transition-all`}
+                  className={`input-field ${errors.phone ? 'border-red-300 bg-red-50/30' : ''}`}
                 />
                 {errors.phone && <p className="text-red-500 text-sm mt-2">{errors.phone}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-bold text-gray-900 mb-2">
-                  车牌号 {plateRequired ? <span className="text-red-500">*</span> : <span className="text-gray-400 font-normal">(可选)</span>}
+                <label className="block text-sm font-bold text-slate-800 mb-2">
+                  车牌号 {plateRequired ? <span className="text-red-500">*</span> : <span className="text-slate-400 font-normal">(可选)</span>}
                 </label>
                 <PlateInput
                   value={formData.plateNumber}
@@ -544,14 +562,14 @@ export default function Home() {
                   required={plateRequired}
                 />
                 {errors.plateNumber && <p className="text-red-500 text-sm mt-2">{errors.plateNumber}</p>}
-                <p className="text-xs text-gray-400 mt-1.5">💡 后台已录入车牌？只填姓名或手机号即可</p>
+                <p className="text-xs text-slate-400 mt-1.5">💡 后台已录入车牌？只填姓名或手机号即可</p>
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={state === 'loading'}
-                  className="w-full py-5 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all shadow-xl shadow-gray-900/20"
+                  className="btn-primary"
                 >
                   {state === 'loading' ? (
                     <span className="flex items-center justify-center gap-2">
@@ -569,10 +587,10 @@ export default function Home() {
             {/* 分隔线 */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200"></div>
+                <div className="w-full border-t border-slate-700/60"></div>
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-3 bg-white/80 text-gray-400">非住客请选择</span>
+                <span className="px-3 bg-slate-800/80 text-slate-400 rounded-full">非住客请选择</span>
               </div>
             </div>
 
@@ -581,7 +599,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={goToPay}
-                className="w-full py-4 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-cyan-600 transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2"
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl font-semibold text-lg hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-500/25 flex items-center justify-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
@@ -591,7 +609,7 @@ export default function Home() {
               <button
                 type="button"
                 onClick={goToPayNoPlate}
-                className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                className="w-full py-3 bg-slate-700/60 text-slate-300 rounded-xl font-medium hover:bg-slate-700/80 transition-all flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -600,8 +618,8 @@ export default function Home() {
               </button>
             </div>
 
-            <div className="mt-6 pt-6 border-t border-gray-200">
-              <p className="text-center text-sm text-gray-400">
+            <div className="mt-6 pt-6 border-t border-slate-700/60">
+              <p className="text-center text-sm text-slate-400">
                 如有疑问请联系前台 · 服务时间 24 小时
               </p>
             </div>

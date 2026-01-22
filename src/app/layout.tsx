@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ThemeInitializer } from "@/components/ui";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,12 +13,15 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="zh-CN">
+		<html lang="zh-CN" data-theme="light" suppressHydrationWarning>
 			<head>
 				<link rel="icon" href="/favicon.svg" type="image/svg+xml"></link>
 				<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 			</head>
-			<body className="font-sans antialiased">{children}</body>
+			<body className="font-sans antialiased gradient-bg">
+				<ThemeInitializer />
+				{children}
+			</body>
 		</html>
 	);
 }

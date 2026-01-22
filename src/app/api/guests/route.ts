@@ -12,7 +12,6 @@ import {
   getSetting,
   createAuditLog,
   type Guest,
-  type DiscountType,
   type GuestStatus
 } from '@/lib/db';
 
@@ -24,7 +23,7 @@ interface CreateGuestBody {
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
-  discountType?: '24hour' | '5day' | 'none';
+  discountType?: string;  // 动态优惠类型
 }
 
 interface UpdateGuestBody {
@@ -36,7 +35,7 @@ interface UpdateGuestBody {
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
-  discountType?: '24hour' | '5day' | 'none';
+  discountType?: string;  // 动态优惠类型
   status?: 'active' | 'exhausted' | 'expired' | 'disabled';
 }
 
@@ -152,7 +151,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 优惠类型：管理员手动设置，默认24hour
-    const finalDiscountType = discountType || '24hour';
+    const finalDiscountType = (discountType || '').trim();
+    if (!finalDiscountType || finalDiscountType === 'none') {
+      return errorResponse('VALIDATION_ERROR', 'Invalid discount type', 400);
+    }
 
     const guest = await createGuest({
       name: name.trim(),
@@ -216,7 +218,7 @@ export async function PATCH(request: NextRequest) {
       useCount?: number;
       checkInTime?: string;
       checkOutTime?: string;
-      discountType?: DiscountType;
+      discountType?: string;
       status?: GuestStatus;
     } = {};
 
@@ -228,12 +230,13 @@ export async function PATCH(request: NextRequest) {
     }
     if (updateData.useCount !== undefined) finalUpdateData.useCount = updateData.useCount;
     
-    // 处理优惠类型更新（管理员手动设置）
+    // 处理优惠类型更新（管理员手动设置，支持动态类型）
     if (updateData.discountType) {
-      const validTypes: DiscountType[] = ['24hour', '5day', 'none'];
-      if (validTypes.includes(updateData.discountType)) {
-        finalUpdateData.discountType = updateData.discountType;
+      const nextDiscountType = updateData.discountType.trim();
+      if (nextDiscountType === 'none') {
+        return errorResponse('VALIDATION_ERROR', 'Invalid discount type', 400);
       }
+      finalUpdateData.discountType = nextDiscountType;
     }
     
     // 处理状态更新

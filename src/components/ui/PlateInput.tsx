@@ -191,15 +191,15 @@ export function PlateInput({ value, onChange, required = false, disabled = false
             disabled={disabled}
             className={`w-9 sm:w-11 md:w-[52px] aspect-[4/5] min-h-[36px] sm:min-h-[42px] max-h-[54px] border-2 rounded-lg sm:rounded-xl text-sm sm:text-base md:text-lg font-bold text-center transition-all duration-200 focus:outline-none focus:scale-105 focus:shadow-lg ${
               province 
-                ? 'bg-gradient-to-b from-orange-50 to-amber-50 border-orange-400 shadow-md text-gray-900' 
-                : 'bg-gradient-to-b from-blue-50 to-indigo-50 border-blue-300 hover:border-blue-400 text-blue-600'
-            } focus:border-orange-500 focus:ring-4 focus:ring-orange-100`}
+                ? 'bg-gradient-to-b from-slate-700 to-slate-800 border-orange-500 shadow-md text-foreground' 
+                : 'bg-gradient-to-b from-slate-800 to-slate-900 border-slate-600 hover:border-slate-500 text-slate-400'
+            } focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20`}
           >
             {province || '省'}
           </button>
         </div>
 
-        <span className="text-gray-400 font-bold text-xs sm:text-base md:text-lg">·</span>
+        <span className="text-slate-500 font-bold text-xs sm:text-base md:text-lg">·</span>
 
         {boxes.map((box, index) => (
           <input
@@ -212,11 +212,11 @@ export function PlateInput({ value, onChange, required = false, disabled = false
             onKeyDown={e => handleKeyDown(index, e)}
             onPaste={handlePaste}
             disabled={disabled}
-            className={`flex-1 min-w-0 w-7 sm:w-10 md:w-11 max-w-[36px] sm:max-w-[42px] md:max-w-[48px] aspect-[4/5] min-h-[36px] sm:min-h-[42px] max-h-[54px] border-2 rounded-lg sm:rounded-xl text-xs sm:text-base md:text-lg font-bold text-center uppercase transition-all duration-200 text-gray-900 placeholder:text-gray-300 focus:outline-none focus:scale-105 focus:shadow-lg ${
+            className={`flex-1 min-w-0 w-7 sm:w-10 md:w-11 max-w-[36px] sm:max-w-[42px] md:max-w-[48px] aspect-[4/5] min-h-[36px] sm:min-h-[42px] max-h-[54px] border-2 rounded-lg sm:rounded-xl text-xs sm:text-base md:text-lg font-bold text-center uppercase transition-all duration-200 text-foreground placeholder:text-slate-600 focus:outline-none focus:scale-105 focus:shadow-lg ${
               box 
-                ? 'bg-gradient-to-b from-orange-50 to-amber-50 border-orange-400 shadow-md' 
-                : 'bg-gradient-to-b from-white to-gray-50 border-gray-200 hover:border-gray-300'
-            } focus:border-orange-500 focus:ring-4 focus:ring-orange-100`}
+                ? 'bg-gradient-to-b from-slate-700 to-slate-800 border-orange-500 shadow-md' 
+                : 'bg-gradient-to-b from-slate-800 to-slate-900 border-slate-700 hover:border-slate-600'
+            } focus:border-orange-500 focus:ring-4 focus:ring-orange-500/20`}
             placeholder={index === 6 ? '' : '0'}
             autoComplete="off"
             autoCorrect="off"
@@ -227,12 +227,12 @@ export function PlateInput({ value, onChange, required = false, disabled = false
       </div>
       
       <div className="flex items-center justify-between text-xs sm:text-sm px-1">
-        <span className="text-gray-500">
+        <span className="text-slate-500">
           {required ? '必填' : '可选'} · 已填 {filledCount}/8 位
-          <span className="hidden sm:inline text-gray-400 ml-2">（支持粘贴车牌）</span>
+          <span className="hidden sm:inline text-slate-600 ml-2">（支持粘贴车牌）</span>
         </span>
         {filledCount >= 7 && (
-          <span className={`flex items-center gap-1 font-medium ${validation.valid ? 'text-green-600' : 'text-orange-500'}`}>
+          <span className={`flex items-center gap-1 font-medium ${validation.valid ? 'text-blue-400' : 'text-orange-400'}`}>
             {validation.valid ? (
               <>
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -299,7 +299,7 @@ export function PlateInput({ value, onChange, required = false, disabled = false
                           className={`h-[44px] landscape:h-[52px] min-w-[32px] landscape:min-w-[44px] flex-1 max-w-[40px] landscape:max-w-[60px] rounded-lg landscape:rounded-xl text-[15px] landscape:text-[17px] font-medium transition-colors ${
                             province === p
                               ? 'bg-blue-500 text-white shadow-sm'
-                              : 'bg-white/80 text-gray-900 shadow-[0_1px_2px_rgba(0,0,0,0.1)] active:bg-white active:scale-95'
+                              : 'bg-slate-700 text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.3)] active:bg-slate-600 active:scale-95'
                           }`}
                         >
                           {p}

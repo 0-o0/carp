@@ -1,4 +1,4 @@
-import { getSetting, updateSetting } from './db';
+import { getDiscountTypeByCode, updateDiscountType } from './db';
 
 // 请求配置
 const PARKING_API_URL = 'http://www.szdaqin.cn/shopDiscount/goDicount.do?responseFunction=goDicount&querytype=0';
@@ -14,31 +14,15 @@ const DEFAULT_BODY_PARAMS = {
   totalcount: '1',
 };
 
-type DiscountType = '24hour' | '5day';
-
-const DISCOUNT_KEYS = {
-  '24hour': {
-    urlKey: 'url_24hour',
-    jsessionidKey: 'jsessionid_24hour',
-    refererKey: 'referer_24hour',
-    postParamsKey: 'post_params_24hour',
-  },
-  '5day': {
-    urlKey: 'url_5day',
-    jsessionidKey: 'jsessionid_5day',
-    refererKey: 'referer_5day',
-    postParamsKey: 'post_params_5day',
-  },
-} as const;
-
 interface DiscountPostParams {
-  id: string;
-  businessid: string;
-  parkid: string;
-  totalcount: string;
+  id?: string;
+  businessid?: string;
+  parkid?: string;
+  totalcount?: string;
+  adposid?: string;
 }
 
-function safeJsonParse<T>(value: string | null): T | null {
+function safeJsonParse<T>(value: string | null | undefined): T | null {
   if (!value) return null;
   try {
     return JSON.parse(value) as T;
@@ -61,28 +45,43 @@ export interface ParkingRequestResult {
 }
 
 /**
- * 发送停车优惠请求
+ * 发送停车优惠请求（支持动态优惠类型）
  * @param plateNumber 车牌号
- * @param discountType 优惠类型 24hour 或 5day
+ * @param discountTypeCode 优惠类型代码（如 '24hour', '5day', '4hour' 等自定义类型）
  */
 export async function sendParkingDiscount(
   plateNumber: string,
-  discountType: DiscountType
+  discountTypeCode: string
 ): Promise<ParkingRequestResult> {
   try {
-    // 获取对应优惠类型的 jsessionid
-    const { jsessionidKey, refererKey, postParamsKey } = DISCOUNT_KEYS[discountType];
-    const jsessionid = await getSetting(jsessionidKey);
-
-    if (!jsessionid) {
+    // 特殊处理 'none' 类型
+    if (discountTypeCode === 'none') {
       return {
         success: false,
-        message: `未配置${discountType === '24hour' ? '24小时' : '5天'}优惠的会话ID`,
+        message: '该住客未设置优惠类型',
       };
     }
 
-    const referer = await getSetting(refererKey);
-    const storedPostParams = safeJsonParse<Partial<DiscountPostParams>>(await getSetting(postParamsKey));
+    // 从数据库获取优惠类型配置
+    const discountType = await getDiscountTypeByCode(discountTypeCode);
+    
+    if (!discountType) {
+      return {
+        success: false,
+        message: `未找到优惠类型: ${discountTypeCode}`,
+      };
+    }
+
+    if (!discountType.jsessionid) {
+      return {
+        success: false,
+        message: `优惠类型「${discountType.name}」未配置Session ID，请先在系统设置中配置`,
+      };
+    }
+
+    const jsessionid = discountType.jsessionid;
+    const referer = discountType.refererUrl;
+    const storedPostParams = safeJsonParse<DiscountPostParams>(discountType.postParams);
 
     // 构建请求头
     const headers: Record<string, string> = {
@@ -223,15 +222,25 @@ export async function fetchJSessionId(url: string): Promise<string | null> {
 }
 
 /**
- * 更新优惠 URL 并获取新的 jsessionid
- * @param discountType 优惠类型
+ * 更新优惠类型的 URL 并获取新的 jsessionid（支持动态优惠类型）
+ * @param discountTypeCode 优惠类型代码
  * @param url 新的优惠 URL
  */
 export async function updateDiscountUrl(
-  discountType: DiscountType,
+  discountTypeCode: string,
   url: string
 ): Promise<{ success: boolean; jsessionid?: string; message?: string }> {
   try {
+    // 从数据库获取优惠类型
+    const discountType = await getDiscountTypeByCode(discountTypeCode);
+    
+    if (!discountType) {
+      return {
+        success: false,
+        message: `未找到优惠类型: ${discountTypeCode}`,
+      };
+    }
+
     const resolved = await resolveDiscountUrl(url);
 
     if (!resolved?.jsessionid) {
@@ -241,16 +250,6 @@ export async function updateDiscountUrl(
       };
     }
 
-    const { urlKey, jsessionidKey, refererKey, postParamsKey } = DISCOUNT_KEYS[discountType];
-
-    await updateSetting(urlKey, url);
-    await updateSetting(jsessionidKey, resolved.jsessionid);
-
-    // 保存 referer（重定向后的 plate 页面 URL，便于模拟浏览器请求）
-    if (resolved.redirectUrl) {
-      await updateSetting(refererKey, resolved.redirectUrl);
-    }
-
     // 从 302 的 URL query 中提取 POST 需要的参数（避免硬编码）
     const nextPostParams: DiscountPostParams = {
       id: resolved.query?.id || DEFAULT_BODY_PARAMS.id,
@@ -258,7 +257,14 @@ export async function updateDiscountUrl(
       parkid: resolved.query?.parkid || DEFAULT_BODY_PARAMS.parkid,
       totalcount: resolved.query?.totalcount || DEFAULT_BODY_PARAMS.totalcount,
     };
-    await updateSetting(postParamsKey, JSON.stringify(nextPostParams));
+
+    // 更新数据库中的优惠类型配置
+    await updateDiscountType(discountType.id, {
+      scanUrl: url,
+      jsessionid: resolved.jsessionid,
+      refererUrl: resolved.redirectUrl,
+      postParams: JSON.stringify(nextPostParams),
+    });
 
     return {
       success: true,

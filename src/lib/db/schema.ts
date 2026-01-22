@@ -15,6 +15,28 @@ export const admins = sqliteTable('admins', {
   index('idx_admins_username').on(table.username),
 ]);
 
+// 自定义优惠类型表
+export const discountTypes = sqliteTable('discount_types', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  code: text('code').notNull().unique(),           // 类型代码
+  name: text('name').notNull(),                     // 显示名称
+  description: text('description'),                 // 描述
+  color: text('color').default('orange').notNull(), // UI颜色主题
+  sortOrder: integer('sort_order').default(0).notNull(),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
+  isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+  // 优惠配置
+  scanUrl: text('scan_url'),                        // 扫码链接URL
+  jsessionid: text('jsessionid'),                   // Session ID
+  refererUrl: text('referer_url'),                  // Referer URL
+  postParams: text('post_params'),                  // POST参数JSON
+  createdAt: text('created_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
+  updatedAt: text('updated_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
+}, (table) => [
+  index('idx_discount_types_code').on(table.code),
+  index('idx_discount_types_active').on(table.isActive),
+]);
+
 // 住客表
 export const guests = sqliteTable('guests', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -26,7 +48,7 @@ export const guests = sqliteTable('guests', {
   usesDefaultSnapshot: integer('uses_default_snapshot').default(3).notNull(),
   checkInTime: text('check_in_time').notNull(),
   checkOutTime: text('check_out_time').notNull(),
-  discountType: text('discount_type', { enum: ['24hour', '5day', 'none'] }).notNull(),
+  discountType: text('discount_type').notNull(),    // 动态关联discount_types.code
   status: text('status', { enum: ['active', 'exhausted', 'expired', 'disabled'] }).default('active').notNull(),
   createdBy: integer('created_by').references(() => admins.id),
   createdAt: text('created_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
@@ -43,20 +65,6 @@ export const settings = sqliteTable('settings', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   key: text('key').notNull().unique(),
   value: text('value').notNull(),
-  updatedAt: text('updated_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
-});
-
-// 优惠配置表
-export const discountConfigs = sqliteTable('discount_configs', {
-  type: text('type', { enum: ['24hour', '5day'] }).primaryKey(),
-  scanUrl: text('scan_url').notNull(),
-  redirectUrl: text('redirect_url').notNull(),
-  jsessionid: text('jsessionid').notNull(),
-  idParam: text('id_param').notNull(),
-  businessidParam: text('businessid_param').notNull(),
-  parkidParam: text('parkid_param').notNull(),
-  totalcountParam: text('totalcount_param').notNull(),
-  adposidParam: text('adposid_param').notNull(),
   updatedAt: text('updated_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
 });
 
@@ -77,7 +85,7 @@ export const usageLogs = sqliteTable('usage_logs', {
 export const submissionLogs = sqliteTable('submission_logs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   guestId: integer('guest_id').notNull().references(() => guests.id, { onDelete: 'cascade' }),
-  discountType: text('discount_type', { enum: ['24hour', '5day', 'none'] }).notNull(),
+  discountType: text('discount_type').notNull(),   // 动态类型
   plateUsed: text('plate_used').notNull(),
   requestOk: integer('request_ok', { mode: 'boolean' }).default(false).notNull(),
   remoteResultKey: text('remote_result_key'),
@@ -104,15 +112,14 @@ export const auditLogs = sqliteTable('audit_logs', {
 // 类型导出
 export type Admin = typeof admins.$inferSelect;
 export type NewAdmin = typeof admins.$inferInsert;
+export type DiscountTypeRecord = typeof discountTypes.$inferSelect;
+export type NewDiscountType = typeof discountTypes.$inferInsert;
 export type Guest = typeof guests.$inferSelect;
 export type NewGuest = typeof guests.$inferInsert;
 export type Setting = typeof settings.$inferSelect;
-export type DiscountConfig = typeof discountConfigs.$inferSelect;
-export type NewDiscountConfig = typeof discountConfigs.$inferInsert;
 export type UsageLog = typeof usageLogs.$inferSelect;
 export type SubmissionLog = typeof submissionLogs.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 
-// 优惠类型和状态
-export type DiscountType = '24hour' | '5day' | 'none';
+// 状态类型
 export type GuestStatus = 'active' | 'exhausted' | 'expired' | 'disabled';

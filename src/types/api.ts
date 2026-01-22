@@ -37,7 +37,7 @@ export interface GuestItem {
   use_count: number;
   check_in_time: string;
   check_out_time: string;
-  discount_type: '24hour' | '5day' | 'none';
+  discount_type: string; // 动态优惠类型（discount_types.code）
   status: 'active' | 'exhausted' | 'expired' | 'disabled';
   created_by?: number | null;
   created_at: string;
@@ -57,4 +57,7 @@ export interface SettingsResponse extends ApiResponse {
 export interface SubmitResponse extends ApiResponse {
   requirePlate?: boolean;
   redirectUrl?: string;
+  guestId?: number;
+  useCount?: number;
+  status?: 'active' | 'exhausted' | 'expired' | 'disabled';
 }

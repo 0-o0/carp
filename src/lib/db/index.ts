@@ -1,13 +1,13 @@
 // 数据库操作封装 - 使用 Drizzle ORM
 import 'server-only';
-import { eq, like, or, sql, desc, and, gte, lte } from 'drizzle-orm';
+import { eq, like, or, sql, desc, and, gte, lte, asc } from 'drizzle-orm';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { CloudflareEnv } from '@/types/cloudflare';
 import { getDb, type DrizzleDB } from './client';
-import { admins, guests, settings, usageLogs, submissionLogs, auditLogs, type Guest, type Admin, type Setting, type UsageLog, type SubmissionLog, type AuditLog } from './schema';
+import { admins, guests, settings, usageLogs, submissionLogs, auditLogs, discountTypes, type Guest, type Admin, type Setting, type UsageLog, type SubmissionLog, type AuditLog, type DiscountTypeRecord } from './schema';
 
 // 重新导出类型
-export type { Admin, Guest, Setting, UsageLog, SubmissionLog, AuditLog, DiscountType, GuestStatus } from './schema';
+export type { Admin, Guest, Setting, UsageLog, SubmissionLog, AuditLog, GuestStatus, DiscountTypeRecord } from './schema';
 export { getDb } from './client';
 
 // 当前请求的数据库实例（通过中间件设置）
@@ -278,7 +278,7 @@ export interface CreateGuestData {
   useCount: number;
   checkInTime: string;
   checkOutTime: string;
-  discountType: '24hour' | '5day' | 'none';
+  discountType: string;  // 动态优惠类型
   createdBy?: number | null;
 }
 
@@ -306,7 +306,7 @@ export interface UpdateGuestData {
   useCount?: number;
   checkInTime?: string;
   checkOutTime?: string;
-  discountType?: '24hour' | '5day' | 'none';
+  discountType?: string;  // 动态优惠类型
   status?: 'active' | 'exhausted' | 'expired' | 'disabled';
 }
 
@@ -423,7 +423,7 @@ export async function getUsageLogsByGuestId(guestId: number): Promise<UsageLog[]
 
 export interface CreateSubmissionLogData {
   guestId: number;
-  discountType: '24hour' | '5day' | 'none';
+  discountType: string;  // 动态优惠类型
   plateUsed: string;
   requestOk: boolean;
   remoteResultKey?: string;
@@ -777,30 +777,290 @@ export async function cleanOldLogs(retentionDays: number): Promise<number> {
   return totalDeleted;
 }
 
+// ==================== 优惠类型操作 ====================
+
+let discountTypesInitDone = false;
+let discountTypesInitPromise: Promise<void> | null = null;
+
+async function ensureDiscountTypesInitialized(): Promise<void> {
+  if (discountTypesInitDone) return;
+  if (discountTypesInitPromise) return discountTypesInitPromise;
+
+  discountTypesInitPromise = (async () => {
+    const database = await db();
+
+    // 检测表是否存在：尝试读取一行即可（不存在会抛错）
+    let tableExists = true;
+    try {
+      await database.select().from(discountTypes).limit(1);
+    } catch (error) {
+      const message = String((error as any)?.message || error);
+      if (message.includes('no such table') || message.toLowerCase().includes('does not exist')) {
+        tableExists = false;
+      } else {
+        throw error;
+      }
+    }
+
+    if (!tableExists) {
+      // 创建 discount_types 表（用于历史数据库兼容：旧dev.db/旧D1未包含该表）
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS discount_types (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT UNIQUE NOT NULL,
+          name TEXT NOT NULL,
+          description TEXT,
+          color TEXT DEFAULT 'orange' NOT NULL,
+          sort_order INTEGER DEFAULT 0 NOT NULL,
+          is_active INTEGER DEFAULT 1 NOT NULL,
+          is_system INTEGER DEFAULT 0 NOT NULL,
+          scan_url TEXT,
+          jsessionid TEXT,
+          referer_url TEXT,
+          post_params TEXT,
+          created_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL,
+          updated_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL
+        );
+      `);
+      await database.run(sql`CREATE INDEX IF NOT EXISTS idx_discount_types_code ON discount_types(code);`);
+      await database.run(sql`CREATE INDEX IF NOT EXISTS idx_discount_types_active ON discount_types(is_active);`);
+    }
+
+    // 插入系统内置优惠类型（幂等）
+    await database.run(sql`
+      INSERT OR IGNORE INTO discount_types (code, name, description, color, sort_order, is_system, is_active)
+      VALUES
+        ('24hour', '24小时优惠', '短期停车优惠，适用于1天内离店', 'orange', 1, 1, 1),
+        ('5day', '5天优惠', '长期停车优惠，适用于多日住宿', 'purple', 2, 1, 1)
+    `);
+
+    // 兼容旧版本：从 settings 迁移 24hour/5day 的扫码URL与会话信息（仅在新表字段为空时补齐）
+    const allSettings = await database.select().from(settings);
+    const settingsMap: Record<string, string> = {};
+    for (const row of allSettings) settingsMap[row.key] = row.value;
+
+    const legacy24 = {
+      scanUrl: settingsMap['url_24hour'] || null,
+      jsessionid: settingsMap['jsessionid_24hour'] || null,
+      refererUrl: settingsMap['referer_24hour'] || null,
+      postParams: settingsMap['post_params_24hour'] || null,
+    };
+    const legacy5 = {
+      scanUrl: settingsMap['url_5day'] || null,
+      jsessionid: settingsMap['jsessionid_5day'] || null,
+      refererUrl: settingsMap['referer_5day'] || null,
+      postParams: settingsMap['post_params_5day'] || null,
+    };
+
+    await database.run(sql`
+      UPDATE discount_types
+      SET
+        scan_url = CASE WHEN scan_url IS NULL OR scan_url = '' THEN ${legacy24.scanUrl} ELSE scan_url END,
+        jsessionid = CASE WHEN jsessionid IS NULL OR jsessionid = '' THEN ${legacy24.jsessionid} ELSE jsessionid END,
+        referer_url = CASE WHEN referer_url IS NULL OR referer_url = '' THEN ${legacy24.refererUrl} ELSE referer_url END,
+        post_params = CASE WHEN post_params IS NULL OR post_params = '' THEN ${legacy24.postParams} ELSE post_params END,
+        updated_at = datetime('now', 'localtime')
+      WHERE code = '24hour';
+    `);
+
+    await database.run(sql`
+      UPDATE discount_types
+      SET
+        scan_url = CASE WHEN scan_url IS NULL OR scan_url = '' THEN ${legacy5.scanUrl} ELSE scan_url END,
+        jsessionid = CASE WHEN jsessionid IS NULL OR jsessionid = '' THEN ${legacy5.jsessionid} ELSE jsessionid END,
+        referer_url = CASE WHEN referer_url IS NULL OR referer_url = '' THEN ${legacy5.refererUrl} ELSE referer_url END,
+        post_params = CASE WHEN post_params IS NULL OR post_params = '' THEN ${legacy5.postParams} ELSE post_params END,
+        updated_at = datetime('now', 'localtime')
+      WHERE code = '5day';
+    `);
+
+    const defaultActiveType = await database
+      .select()
+      .from(discountTypes)
+      .where(eq(discountTypes.isActive, true))
+      .orderBy(asc(discountTypes.sortOrder))
+      .limit(1);
+    const fallbackCode = defaultActiveType[0]?.code || '24hour';
+
+    await database.run(sql`
+      UPDATE guests
+      SET
+        discount_type = ${fallbackCode},
+        updated_at = datetime('now', 'localtime')
+      WHERE
+        discount_type = ''
+        OR discount_type = 'none'
+        OR discount_type NOT IN (SELECT code FROM discount_types);
+    `);
+  })();
+
+  try {
+    await discountTypesInitPromise;
+    discountTypesInitDone = true;
+  } finally {
+    discountTypesInitPromise = null;
+  }
+}
+
+/**
+ * 获取所有优惠类型
+ */
+export async function getAllDiscountTypes(): Promise<DiscountTypeRecord[]> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  return database.select().from(discountTypes).orderBy(asc(discountTypes.sortOrder));
+}
+
+/**
+ * 获取所有启用的优惠类型
+ */
+export async function getActiveDiscountTypes(): Promise<DiscountTypeRecord[]> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  return database.select().from(discountTypes)
+    .where(eq(discountTypes.isActive, true))
+    .orderBy(asc(discountTypes.sortOrder));
+}
+
+/**
+ * 通过code获取优惠类型
+ */
+export async function getDiscountTypeByCode(code: string): Promise<DiscountTypeRecord | null> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  const result = await database.select().from(discountTypes)
+    .where(eq(discountTypes.code, code))
+    .limit(1);
+  return result[0] || null;
+}
+
+/**
+ * 通过ID获取优惠类型
+ */
+export async function getDiscountTypeById(id: number): Promise<DiscountTypeRecord | null> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  const result = await database.select().from(discountTypes)
+    .where(eq(discountTypes.id, id))
+    .limit(1);
+  return result[0] || null;
+}
+
+export interface CreateDiscountTypeData {
+  code: string;
+  name: string;
+  description?: string;
+  color?: string;
+  sortOrder?: number;
+}
+
+/**
+ * 创建新的优惠类型
+ */
+export async function createDiscountType(data: CreateDiscountTypeData): Promise<DiscountTypeRecord | null> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  const result = await database.insert(discountTypes).values({
+    code: data.code,
+    name: data.name,
+    description: data.description,
+    color: data.color || 'orange',
+    sortOrder: data.sortOrder || 0,
+    isSystem: false,
+  }).returning();
+  return result[0] || null;
+}
+
+export interface UpdateDiscountTypeData {
+  name?: string;
+  description?: string;
+  color?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  scanUrl?: string;
+  jsessionid?: string;
+  refererUrl?: string;
+  postParams?: string;
+}
+
+/**
+ * 更新优惠类型
+ */
+export async function updateDiscountType(id: number, data: UpdateDiscountTypeData): Promise<boolean> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  await database.update(discountTypes)
+    .set({
+      ...data,
+      updatedAt: sql`datetime('now', 'localtime')`,
+    })
+    .where(eq(discountTypes.id, id));
+  return true;
+}
+
+/**
+ * 更新优惠类型（通过code）
+ */
+export async function updateDiscountTypeByCode(code: string, data: UpdateDiscountTypeData): Promise<boolean> {
+  await ensureDiscountTypesInitialized();
+  const database = await db();
+  await database.update(discountTypes)
+    .set({
+      ...data,
+      updatedAt: sql`datetime('now', 'localtime')`,
+    })
+    .where(eq(discountTypes.code, code));
+  return true;
+}
+
+/**
+ * 删除优惠类型（不能删除系统内置类型）
+ */
+export async function deleteDiscountType(id: number): Promise<{ success: boolean; message?: string }> {
+  await ensureDiscountTypesInitialized();
+  const discountType = await getDiscountTypeById(id);
+  if (!discountType) {
+    return { success: false, message: '优惠类型不存在' };
+  }
+  if (discountType.isSystem) {
+    return { success: false, message: '不能删除系统内置优惠类型' };
+  }
+  
+  const database = await db();
+  await database.delete(discountTypes).where(eq(discountTypes.id, id));
+  return { success: true };
+}
+
 // ==================== 数据库初始化 ====================
 
 export async function initializeSettings(): Promise<void> {
   const defaultSettings = [
-    { key: 'url_24hour', value: '' },
-    { key: 'url_5day', value: '' },
-    { key: 'jsessionid_24hour', value: '' },
-    { key: 'jsessionid_5day', value: '' },
-    { key: 'referer_24hour', value: '' },
-    { key: 'referer_5day', value: '' },
-    { key: 'post_params_24hour', value: '' },
-    { key: 'post_params_5day', value: '' },
-    { key: 'default_use_count', value: '' },
+    { key: 'default_use_count', value: '3' },
     { key: 'error_redirect_url', value: '' },
     { key: 'pay_url', value: '' },
     { key: 'pay_url_noplate', value: '' },
     { key: 'log_enabled', value: 'false' },
-    { key: 'log_retention_days', value: '' },
+    { key: 'log_retention_days', value: '7' },
   ];
 
   for (const setting of defaultSettings) {
     const existing = await getSetting(setting.key);
     if (existing === null) {
       await updateSetting(setting.key, setting.value);
+    }
+  }
+  
+  // 初始化默认优惠类型
+  const defaultDiscountTypes = [
+    { code: '24hour', name: '24小时优惠', description: '短期停车优惠，适用于1天内离店', color: 'orange', sortOrder: 1, isSystem: true },
+    { code: '5day', name: '5天优惠', description: '长期停车优惠，适用于多日住宿', color: 'purple', sortOrder: 2, isSystem: true }
+  ];
+  
+  for (const dt of defaultDiscountTypes) {
+    const existing = await getDiscountTypeByCode(dt.code);
+    if (!existing) {
+      const database = await db();
+      await database.insert(discountTypes).values(dt);
     }
   }
 }

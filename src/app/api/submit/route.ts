@@ -1,11 +1,14 @@
 import { NextRequest } from 'next/server';
+import { authenticateRequest } from '@/lib/auth';
 import { 
   findGuestByInfo, 
+  getGuestById,
   decrementGuestUseCount, 
   createUsageLog,
   createSubmissionLog,
   getSetting,
-  updateGuest
+  updateGuest,
+  getDiscountTypeByCode
 } from '@/lib/db';
 import { sendParkingDiscount } from '@/lib/parking-api';
 import { validatePlateNumber } from '@/lib/validation';
@@ -13,6 +16,7 @@ import { parseShanghaiDateTime } from '@/lib/datetime';
 import { errorResponse, okResponse } from '@/lib/api-response';
 
 interface SubmitRequestBody {
+  guestId?: number;
   name?: string;
   phone?: string;
   plateNumber?: string;
@@ -21,13 +25,15 @@ interface SubmitRequestBody {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json() as SubmitRequestBody;
-    const { name, phone, plateNumber } = body;
+    const { guestId, name, phone, plateNumber } = body;
 
-    // 基本验证 - 至少需要 (姓名或手机号) 或 车牌号
+    const hasGuestId = typeof guestId === 'number' && Number.isFinite(guestId);
+
+    // 基本验证 - 至少需要 (guestId) 或 (姓名/手机号) 或 (车牌号)
     const hasNameOrPhone = name?.trim() || phone?.trim();
     const hasPlate = plateNumber?.trim();
 
-    if (!hasNameOrPhone && !hasPlate) {
+    if (!hasGuestId && !hasNameOrPhone && !hasPlate) {
       return errorResponse('VALIDATION_ERROR', '请填写姓名/手机号，或填写车牌号', 400);
     }
 
@@ -41,12 +47,24 @@ export async function POST(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '车牌号格式不正确', 400);
     }
 
-    // 查找用户信息 - 新匹配逻辑
-    const { guest, matchedBy, reason } = await findGuestByInfo(
-      name?.trim(),
-      phone?.trim(),
-      plateNumber?.trim()
-    );
+    // 查找用户信息：guestId(管理员辅助提交) 或 姓名/手机号/车牌(住客提交)
+    let guest = null as Awaited<ReturnType<typeof getGuestById>>;
+    let reason: 'not_found' | 'multiple_matches' | undefined;
+
+    if (hasGuestId) {
+      const user = await authenticateRequest(request);
+      if (!user) {
+        return errorResponse('UNAUTHORIZED', '未授权', 401);
+      }
+      guest = await getGuestById(guestId!);
+      if (!guest) {
+        return errorResponse('NOT_FOUND', '未找到住客记录', 404);
+      }
+    } else {
+      const found = await findGuestByInfo(name?.trim(), phone?.trim(), plateNumber?.trim());
+      guest = found.guest;
+      reason = found.reason;
+    }
 
     if (!guest) {
       // 根据原因返回不同的错误提示
@@ -65,8 +83,8 @@ export async function POST(request: NextRequest) {
       return errorResponse('FORBIDDEN', '您的优惠次数已用完，请联系前台工作人员', 403);
     }
 
-    // 检查优惠类型 - 无折扣用户需要去付费页面
-    if (guest.discountType === 'none') {
+    // 检查优惠类型 - 无折扣用户（空字符串或 'none'）需要去付费页面
+    if (!guest.discountType || guest.discountType === 'none') {
       const payUrl = await getSetting('pay_url');
       if (payUrl) {
         return errorResponse('NO_DISCOUNT', '您没有停车优惠，请前往付费页面', 200, { redirectUrl: payUrl });
@@ -113,10 +131,9 @@ export async function POST(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '车牌号格式不正确', 400);
     }
 
-    await decrementGuestUseCount(guest.id);
-
     // 发送停车优惠请求
     const result = await sendParkingDiscount(finalPlateNumber, guest.discountType);
+    const updatedGuest = result.success ? await decrementGuestUseCount(guest.id) : null;
 
     await Promise.allSettled([
       createUsageLog({
@@ -135,10 +152,19 @@ export async function POST(request: NextRequest) {
     ]);
 
     if (result.success) {
-      return okResponse();
+      const useCount = typeof updatedGuest?.useCount === 'number' ? updatedGuest.useCount : Math.max(0, guest.useCount - 1);
+      const status = typeof updatedGuest?.status === 'string' ? updatedGuest.status : (useCount <= 0 ? 'exhausted' : guest.status);
+
+      return okResponse({
+        message: '提交成功',
+        guestId: guest.id,
+        useCount,
+        status,
+      });
     } else {
-      const urlKey = guest.discountType === '24hour' ? 'url_24hour' : 'url_5day';
-      const redirectUrl = await getSetting(urlKey);
+      // 从优惠类型表中获取扫描URL作为重定向
+      const discountTypeRecord = await getDiscountTypeByCode(guest.discountType);
+      const redirectUrl = discountTypeRecord?.scanUrl;
 
       if (redirectUrl) {
         return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 

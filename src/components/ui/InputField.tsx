@@ -12,17 +12,17 @@ export const InputField = forwardRef<HTMLInputElement, InputFieldProps>(
     return (
       <div className="space-y-2">
         {label && (
-          <label className="block text-sm font-semibold text-gray-900">
+          <label className="block text-sm font-semibold text-foreground">
             {label}
           </label>
         )}
         <input
           ref={ref}
-          className={`input-field text-gray-900 placeholder:text-gray-400 ${error ? 'border-red-500 bg-red-50/30' : ''} ${className}`}
+          className={`input-field placeholder:text-slate-500 ${error ? 'border-red-500 bg-red-500/10' : ''} ${className}`}
           {...props}
         />
         {error && (
-          <p className="text-sm text-red-500 animate-shake">{error}</p>
+          <p className="text-sm text-red-400 animate-shake">{error}</p>
         )}
       </div>
     );

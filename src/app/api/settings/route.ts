@@ -1,7 +1,6 @@
 import { NextRequest } from 'next/server';
 import { authenticateRequest } from '@/lib/auth';
 import { getAllSettings, getSetting, updateSetting } from '@/lib/db';
-import { updateDiscountUrl } from '@/lib/parking-api';
 import { errorResponse, okResponse } from '@/lib/api-response';
 
 interface SettingUpdateBody {
@@ -48,21 +47,6 @@ export async function POST(request: NextRequest) {
       return errorResponse('VALIDATION_ERROR', '缺少设置项', 400);
     }
 
-    // 如果是更新优惠URL，需要重新获取jsessionid
-    if (key === 'url_24hour' || key === 'url_5day') {
-      const discountType = key === 'url_24hour' ? '24hour' : '5day';
-      const result = await updateDiscountUrl(discountType, value);
-
-      if (!result.success) {
-        return errorResponse('CONFIG_ERROR', result.message || 'URL 解析失败', 400);
-      }
-
-      return okResponse({
-        jsessionid: result.jsessionid,
-        message: 'URL 和 Session ID 已更新',
-      });
-    }
-
     // 普通设置更新
     const success = await updateSetting(key, value);
 
@@ -70,7 +54,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('INTERNAL_ERROR', '更新失败', 500);
     }
 
-    return okResponse();
+    return okResponse({ message: '设置已更新' });
   } catch (error) {
     console.error('更新设置失败:', error);
     return errorResponse('INTERNAL_ERROR', '系统错误', 500);

@@ -132,7 +132,7 @@ export default function DashPanelLogin() {
 
   // 密码输入框图标
   const EyeIcon = ({ show }: { show: boolean }) => (
-    <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       {show ? (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
       ) : (
@@ -146,54 +146,57 @@ export default function DashPanelLogin() {
     return (
       <GradientBackground className="relative min-h-screen overflow-hidden">
         <div className="absolute inset-0 pointer-events-none overflow-hidden">
-          <div className="absolute -left-32 -top-32 w-[500px] h-[500px] rounded-full blur-3xl bg-gradient-to-br from-purple-300/40 to-violet-200/30" />
-          <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full blur-3xl bg-gradient-to-bl from-orange-200/50 to-amber-100/40" />
-          <div className="absolute -left-20 bottom-0 w-[400px] h-[400px] rounded-full blur-3xl bg-gradient-to-tr from-pink-200/50 to-rose-100/40" />
+          <div className="absolute -left-32 -top-32 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/25 to-blue-400/15" />
+          <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-gradient-to-bl from-orange-500/30 to-amber-400/20" />
+          <div className="absolute -left-20 bottom-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-400/30 to-blue-300/20" />
         </div>
 
         <div className="relative min-h-screen flex items-center justify-center px-4 py-10">
-          <div className="w-full max-w-[420px]">
-            <div className="bg-white/90 backdrop-blur-2xl rounded-[32px] shadow-2xl p-8 sm:p-10 border border-white/60">
-              <div className="mb-8">
-                <h1 className="text-[28px] font-bold text-gray-900 leading-tight">修改密码</h1>
-                <p className="text-gray-500 mt-2">首次登录请设置新密码</p>
+          <div className="w-full max-w-[400px]">
+            <div 
+              className="glass-modal p-8 sm:p-9"
+              style={{ WebkitBackdropFilter: 'blur(32px) saturate(180%)' }}
+            >
+              <div className="mb-7">
+                <h1 className="text-2xl font-bold text-slate-800 leading-tight">修改密码</h1>
+                <p className="text-slate-500 mt-1.5 text-sm">首次登录请设置新密码</p>
               </div>
 
               <form onSubmit={handleChangePassword} className="space-y-5">
-                <div className="group">
-                  <label className="block text-sm font-bold text-gray-900 mb-2">新密码</label>
+                <div>
+                  <label className="block text-sm font-bold text-slate-800 mb-2">新密码</label>
                   <div className="relative">
                     <input
                       type={showNewPassword ? 'text' : 'password'}
                       placeholder="请输入新密码（至少6位）"
                       value={newPassword}
                       onChange={e => setNewPassword(e.target.value)}
-                      className="w-full px-5 py-4 pr-12 bg-white border-2 border-gray-200 rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-orange-400 focus:bg-orange-50/30 focus:ring-4 focus:ring-orange-100 hover:border-gray-300 hover:bg-gray-50/50 transition-all duration-200"
+                      className="input-field pr-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                     >
                       <EyeIcon show={showNewPassword} />
                     </button>
                   </div>
                 </div>
 
-                <div className="group">
-                  <label className="block text-sm font-bold text-gray-900 mb-2">确认密码</label>
+                <div>
+                  <label className="block text-sm font-bold text-slate-800 mb-2">确认密码</label>
                   <div className="relative">
                     <input
                       type={showConfirmPassword ? 'text' : 'password'}
                       placeholder="请再次输入新密码"
                       value={confirmPassword}
                       onChange={e => setConfirmPassword(e.target.value)}
-                      className="w-full px-5 py-4 pr-12 bg-white border-2 border-gray-200 rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-orange-400 focus:bg-orange-50/30 focus:ring-4 focus:ring-orange-100 hover:border-gray-300 hover:bg-gray-50/50 transition-all duration-200"
+                      className="input-field pr-12"
                     />
                     <button
                       type="button"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                     >
                       <EyeIcon show={showConfirmPassword} />
                     </button>
@@ -207,7 +210,7 @@ export default function DashPanelLogin() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gray-900/20"
+                  className="btn-primary mt-2"
                 >
                   {loading ? '提交中...' : '确认修改'}
                 </button>
@@ -219,57 +222,60 @@ export default function DashPanelLogin() {
     );
   }
 
-  // 登录页面
+  // 登录页面 - 参考 Sign Up 设计图
   return (
     <GradientBackground className="relative min-h-screen overflow-hidden">
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -left-32 -top-32 w-[500px] h-[500px] rounded-full blur-3xl bg-gradient-to-br from-purple-300/40 to-violet-200/30" />
-        <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full blur-3xl bg-gradient-to-bl from-orange-200/50 to-amber-100/40" />
-        <div className="absolute -left-20 bottom-0 w-[400px] h-[400px] rounded-full blur-3xl bg-gradient-to-tr from-pink-200/50 to-rose-100/40" />
-        <div className="absolute right-20 bottom-20 w-[300px] h-[300px] rounded-full blur-3xl bg-gradient-to-tl from-blue-100/40 to-cyan-50/30" />
+        <div className="absolute -left-32 -top-32 w-[500px] h-[500px] rounded-full bg-gradient-to-br from-blue-500/25 to-blue-400/15" />
+        <div className="absolute right-0 top-0 w-[600px] h-[600px] rounded-full bg-gradient-to-bl from-orange-500/30 to-amber-400/20" />
+        <div className="absolute -left-20 bottom-0 w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-blue-400/30 to-blue-300/20" />
+        <div className="absolute right-20 bottom-20 w-[300px] h-[300px] rounded-full bg-gradient-to-tl from-blue-400/25 to-blue-300/15" />
       </div>
 
       <div className="relative min-h-screen flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-[420px]">
-          <div className="bg-white/90 backdrop-blur-2xl rounded-[32px] shadow-2xl p-8 sm:p-10 border border-white/60">
+        <div className="w-full max-w-[400px]">
+          <div 
+            className="glass-modal p-8 sm:p-9"
+            style={{ WebkitBackdropFilter: 'blur(32px) saturate(180%)' }}
+          >
             {/* Logo */}
-            <div className="flex justify-center mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-3xl shadow-lg shadow-orange-200">
+            <div className="flex justify-center mb-5">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 flex items-center justify-center text-2xl shadow-xl shadow-orange-500/20">
                 🚗
               </div>
             </div>
 
-            <div className="text-center mb-8">
-              <h1 className="text-[28px] font-bold text-gray-900 leading-tight">管理后台</h1>
-              <p className="text-gray-500 mt-2">酒店停车优惠管理系统</p>
+            <div className="text-center mb-7">
+              <h1 className="text-2xl font-bold text-slate-800 leading-tight">管理后台</h1>
+              <p className="text-slate-500 mt-1.5 text-sm">酒店停车优惠管理系统</p>
             </div>
 
             <form onSubmit={handleLogin} className="space-y-5">
-              <div className="group">
-                <label className="block text-sm font-bold text-gray-900 mb-2">用户名</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-2">用户名</label>
                 <input
                   type="text"
                   placeholder="请输入用户名"
                   value={formData.username}
                   onChange={e => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-5 py-4 bg-white border-2 border-gray-200 rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-orange-400 focus:bg-orange-50/30 focus:ring-4 focus:ring-orange-100 hover:border-gray-300 hover:bg-gray-50/50 transition-all duration-200"
+                  className="input-field"
                 />
               </div>
 
-              <div className="group">
-                <label className="block text-sm font-bold text-gray-900 mb-2">密码</label>
+              <div>
+                <label className="block text-sm font-bold text-slate-800 mb-2">密码</label>
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="请输入密码"
                     value={formData.password}
                     onChange={e => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-5 py-4 pr-12 bg-white border-2 border-gray-200 rounded-2xl text-base text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-orange-400 focus:bg-orange-50/30 focus:ring-4 focus:ring-orange-100 hover:border-gray-300 hover:bg-gray-50/50 transition-all duration-200"
+                    className="input-field pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 rounded-lg hover:bg-slate-100 transition-colors"
                   >
                     <EyeIcon show={showPassword} />
                   </button>
@@ -277,8 +283,8 @@ export default function DashPanelLogin() {
               </div>
 
               {errors.form && (
-                <div className="flex items-center gap-2 p-3 bg-red-50 rounded-xl">
-                  <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-center gap-2 p-3.5 bg-red-50/80 rounded-xl border border-red-100/60">
+                  <svg className="w-4.5 h-4.5 text-red-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                   </svg>
                   <span className="text-red-700 text-sm">{errors.form}</span>
@@ -288,7 +294,7 @@ export default function DashPanelLogin() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 bg-gray-900 text-white rounded-2xl font-semibold text-lg hover:bg-gray-800 disabled:bg-gray-400 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-gray-900/20"
+                className="btn-primary mt-2"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -302,15 +308,15 @@ export default function DashPanelLogin() {
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-400 mt-6">
+            <p className="text-center text-xs text-slate-400 mt-5">
               如忘记密码请联系超级管理员
             </p>
           </div>
 
           {/* 底部标签 */}
-          <div className="mt-6 text-center">
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/60 backdrop-blur rounded-full text-sm text-gray-600">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+          <div className="mt-5 text-center">
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-slate-800/65 backdrop-blur-sm rounded-full text-xs text-slate-300 shadow-sm border border-slate-700/40">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               系统运行正常
             </span>
           </div>
