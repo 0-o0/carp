@@ -415,17 +415,19 @@ export default function GuestsPage() {
     // 根据类型名称的关键字返回对应颜色主题
     if (type?.color) {
       const colorMap: Record<string, string> = {
-        'orange': '#F97316',
-        'purple': '#3B82F6', // 改为蓝色
-        'blue': '#3B82F6',
-        'green': '#3B82F6', // 改为蓝色
-        'red': '#EF4444',
-        'pink': '#F97316', // 改为橙色
-        'yellow': '#F59E0B',
-        'cyan': '#3B82F6', // 改为蓝色
-        'indigo': '#3B82F6', // 改为蓝色
+        orange: '#F97316',
+        yellow: '#F59E0B',
+        red: '#EF4444',
+        blue: '#3B82F6',
+        green: '#16A34A',
+        purple: '#6366F1',
+        indigo: '#4F46E5',
+        cyan: '#0891B2',
+        pink: '#DB2777',
       };
-      return colorMap[type.color] || type.color;
+      const key = type.color.trim().toLowerCase();
+      if (key.startsWith('#')) return key;
+      return colorMap[key] || type.color;
     }
     return '#3B82F6';
   };

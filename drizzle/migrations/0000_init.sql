@@ -133,7 +133,7 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
     ('log_enabled', 'false'),
     ('log_retention_days', '7'),
     ('pay_url', ''),
-    ('pay_url_noplate', '');
+    ('welcome_url', '');
 
 -- 初始化默认优惠类型
 INSERT OR IGNORE INTO discount_types (code, name, description, color, sort_order, is_system, is_active) VALUES

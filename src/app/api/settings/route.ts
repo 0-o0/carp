@@ -14,11 +14,11 @@ export async function GET(request: NextRequest) {
     const user = await authenticateRequest(request);
     if (!user) {
       const payUrl = await getSetting('pay_url');
-      const payUrlNoPlate = await getSetting('pay_url_noplate');
+      const welcomUrl = await getSetting('welcome_url');
       return okResponse({
         settings: {
           pay_url: payUrl || '',
-          pay_url_noplate: payUrlNoPlate || '',
+          welcome_url: welcomUrl || '',
         },
       });
     }

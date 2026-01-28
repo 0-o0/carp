@@ -28,7 +28,7 @@ interface Settings {
   log_enabled: string;
   log_retention_days: string;
   pay_url: string;
-  pay_url_noplate: string;
+  welcome_url: string;
 }
 
 export default function SettingsPage() {
@@ -39,7 +39,7 @@ export default function SettingsPage() {
     log_enabled: 'false',
     log_retention_days: '7',
     pay_url: '',
-    pay_url_noplate: '',
+    welcome_url: '',
   });
   
   const [discountTypes, setDiscountTypes] = useState<DiscountType[]>([]);
@@ -210,7 +210,7 @@ export default function SettingsPage() {
       await handleQRScan(url, type.code);
       return;
     }
-    if (['pay_url', 'pay_url_noplate', 'error_redirect_url'].includes(targetId)) {
+    if (['pay_url', 'welcome_url', 'error_redirect_url'].includes(targetId)) {
       setSettings(prev => ({ ...prev, [targetId]: url }));
       const ok = await saveSetting(targetId, url);
       if (!ok) throw new Error('保存失败');
@@ -229,7 +229,7 @@ export default function SettingsPage() {
       type: 'discount' as const,
     })),
     { id: 'pay_url', name: '正常缴费链接', color: '#3b82f6', type: 'payment' as const },
-    { id: 'pay_url_noplate', name: '无牌车缴费链接', color: '#3b82f6', type: 'payment' as const },
+    { id: 'welcome_url', name: '欢迎下次光临', color: '#3b82f6', type: 'payment' as const },
     { id: 'error_redirect_url', name: '错误重定向', color: '#6b7280', type: 'other' as const },
   ];
 
@@ -403,24 +403,23 @@ export default function SettingsPage() {
               </p>
             )}
           </div>
-          {/* 无牌车缴费 */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">无牌车缴费 URL</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">welcome URL</label>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={settings.pay_url_noplate}
-                onChange={e => setSettings(prev => ({ ...prev, pay_url_noplate: e.target.value }))}
+                value={settings.welcome_url}
+                onChange={e => setSettings(prev => ({ ...prev, welcome_url: e.target.value }))}
                 placeholder="http://..."
                 className="input-field flex-1"
               />
-              <Button variant="outline" onClick={() => saveSetting('pay_url_noplate', settings.pay_url_noplate)} loading={saving.pay_url_noplate}>
+              <Button variant="outline" onClick={() => saveSetting('welcome_url', settings.welcome_url)} loading={saving.welcome_url}>
                 保存
               </Button>
             </div>
-            {messages.pay_url_noplate && (
-              <p className={`text-xs mt-1.5 ${messages.pay_url_noplate.type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
-                {messages.pay_url_noplate.text}
+            {messages.welcome_url && (
+              <p className={`text-xs mt-1.5 ${messages.welcome_url.type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
+                {messages.welcome_url.text}
               </p>
             )}
           </div>

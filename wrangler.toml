@@ -13,7 +13,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "carp"
-database_id = "ec79230f-b0f8-45c4-9ce5-d2c63ded96e0"
+database_id = "d6f67a99-e9c9-4255-9816-86e5183e1f63"
 
 [vars]
 SUPER_ADMIN_USERNAME = "test"

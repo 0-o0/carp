@@ -1038,7 +1038,7 @@ export async function initializeSettings(): Promise<void> {
     { key: 'default_use_count', value: '3' },
     { key: 'error_redirect_url', value: '' },
     { key: 'pay_url', value: '' },
-    { key: 'pay_url_noplate', value: '' },
+    { key: 'welcome_url', value: '' },
     { key: 'log_enabled', value: 'false' },
     { key: 'log_retention_days', value: '7' },
   ];
