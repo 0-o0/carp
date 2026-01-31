@@ -178,6 +178,37 @@ export async function POST(request: NextRequest) {
     }
 
     // 创建新优惠类型
+
+
+    // ???????/????
+    if (action === 'updateCustom') {
+      const { code, requestTemplate, responseTemplate } = body;
+      if (!code) {
+        return NextResponse.json(
+          { success: false, error: '??????' },
+          { status: 400 }
+        );
+      }
+
+      const discountType = await getDiscountTypeByCode(code);
+      if (!discountType) {
+        return NextResponse.json(
+          { success: false, error: '???????' },
+          { status: 404 }
+        );
+      }
+
+      await updateDiscountTypeByCode(code, {
+        requestTemplate: typeof requestTemplate === 'string' ? requestTemplate : null,
+        responseTemplate: typeof responseTemplate === 'string' ? responseTemplate : null,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: '????????',
+      });
+    }
+
     if (action === 'create') {
       const { code, name, description, color } = body;
       

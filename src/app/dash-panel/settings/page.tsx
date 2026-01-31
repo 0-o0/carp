@@ -18,6 +18,8 @@ interface DiscountType {
   jsessionid: string | null;
   refererUrl: string | null;
   postParams: string | null;
+  requestTemplate: string | null;
+  responseTemplate: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +55,9 @@ export default function SettingsPage() {
   // 类型管理状态
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTypeDetail, setShowTypeDetail] = useState<DiscountType | null>(null);
+  const [customRequestDraft, setCustomRequestDraft] = useState('');
+  const [customResponseDraft, setCustomResponseDraft] = useState('');
+  const [savingCustom, setSavingCustom] = useState(false);
   const [newType, setNewType] = useState({ code: '', name: '', description: '', color: '#6366f1' });
   const [addingType, setAddingType] = useState(false);
   const [deletingType, setDeletingType] = useState<string | null>(null);
@@ -89,6 +94,12 @@ export default function SettingsPage() {
   }, [router]);
 
   useEffect(() => { loadSettings(); loadDiscountTypes(); }, [loadSettings, loadDiscountTypes]);
+
+  useEffect(() => {
+    if (!showTypeDetail) return;
+    setCustomRequestDraft(showTypeDetail.requestTemplate || '');
+    setCustomResponseDraft(showTypeDetail.responseTemplate || '');
+  }, [showTypeDetail]);
 
   // 保存设置
   const saveSetting = async (key: string, value: string): Promise<boolean> => {
@@ -200,6 +211,46 @@ export default function SettingsPage() {
       setTypeMessages(prev => ({ ...prev, [code]: { type: 'error', text: '删除失败' } }));
     } finally {
       setDeletingType(null);
+    }
+  };
+
+
+  // Save custom templates
+  const handleSaveCustomTemplates = async (code: string) => {
+    setSavingCustom(true);
+    setTypeMessages(prev => { const n = { ...prev }; delete n[code]; return n; });
+    try {
+      const response = await fetch('/api/discount-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          action: 'updateCustom',
+          code,
+          requestTemplate: customRequestDraft,
+          responseTemplate: customResponseDraft,
+        }),
+      });
+      const result = await response.json();
+      if (result.success) {
+        setTypeMessages(prev => ({
+          ...prev,
+          [code]: { type: 'success', text: result.message || 'Saved' },
+        }));
+        loadDiscountTypes();
+      } else {
+        setTypeMessages(prev => ({
+          ...prev,
+          [code]: { type: 'error', text: result.error || result.message || 'Save failed' },
+        }));
+      }
+    } catch {
+      setTypeMessages(prev => ({
+        ...prev,
+        [code]: { type: 'error', text: 'Save failed' },
+      }));
+    } finally {
+      setSavingCustom(false);
     }
   };
 
@@ -690,6 +741,38 @@ export default function SettingsPage() {
                 <label className="block text-sm font-medium text-slate-300 mb-3">
                   {showTypeDetail.jsessionid ? '更新配置' : '配置此优惠类型'}
                 </label>
+
+
+              {/* Custom request/response */}
+              <div className="border-t border-slate-700/50 pt-4 mt-4 space-y-3">
+                <label className="block text-sm font-medium text-slate-300">Custom request template (JSON or const snippet)</label>
+                <textarea
+                  value={customRequestDraft}
+                  onChange={e => setCustomRequestDraft(e.target.value)}
+                  rows={6}
+                  placeholder={'Supports JSON or "const url/method/headers/body" snippet'}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                />
+                <label className="block text-sm font-medium text-slate-300">Response rules (JSON)</label>
+                <textarea
+                  value={customResponseDraft}
+                  onChange={e => setCustomResponseDraft(e.target.value)}
+                  rows={5}
+                  placeholder='{"type":"json","success":{"path":"info.errmsg","equals":"ok"},"messagePath":"info.errmsg"}'
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                />
+                <p className="text-xs text-slate-500">Placeholders: {'{{plate}}'} {'{{discountType}}'} {'{{jsessionid}}'} {'{{name}}'} {'{{phone}}'} {'{{note}}'}</p>
+                <p className="text-xs text-slate-500">{'Overrides: #body{...} replaces or patches body, #header{...} merges headers.'}</p>
+                <Button
+                  variant="outline"
+                  onClick={() => handleSaveCustomTemplates(showTypeDetail.code)}
+                  loading={savingCustom}
+                  className="w-full"
+                >
+                  Save custom config
+                </Button>
+              </div>
+
                 <QRScanner
                   targets={[{
                     id: showTypeDetail.code,

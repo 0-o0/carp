@@ -57,6 +57,7 @@ export interface SettingsResponse extends ApiResponse {
 export interface SubmitResponse extends ApiResponse {
   requirePlate?: boolean;
   redirectUrl?: string;
+  remoteResponse?: string;
   guestId?: number;
   useCount?: number;
   status?: 'active' | 'exhausted' | 'expired' | 'disabled';

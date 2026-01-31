@@ -25,11 +25,13 @@ export const discountTypes = sqliteTable('discount_types', {
   sortOrder: integer('sort_order').default(0).notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
   isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
-  // 优惠配置
-  scanUrl: text('scan_url'),                        // 扫码链接URL
+  // Discount config
+  scanUrl: text('scan_url'),                        // Scan URL
   jsessionid: text('jsessionid'),                   // Session ID
   refererUrl: text('referer_url'),                  // Referer URL
-  postParams: text('post_params'),                  // POST参数JSON
+  postParams: text('post_params'),                  // POST params JSON
+  requestTemplate: text('request_template'),        // Custom request template
+  responseTemplate: text('response_template'),      // Custom response rules
   createdAt: text('created_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
   updatedAt: text('updated_at').default(sql`(datetime('now', 'localtime'))`).notNull(),
 }, (table) => [

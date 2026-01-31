@@ -135,12 +135,17 @@ export async function POST(request: NextRequest) {
     if (!discountTypeRecord) {
       return errorResponse('CONFIG_ERROR', 'Discount type configuration missing.', 400);
     }
-    if (!discountTypeRecord.jsessionid && !discountTypeRecord.scanUrl) {
-      return errorResponse('CONFIG_ERROR', 'Discount type missing session or scan URL.', 400);
+    const hasCustomRequest = Boolean(discountTypeRecord.requestTemplate && discountTypeRecord.requestTemplate.trim());
+    if (!hasCustomRequest && !discountTypeRecord.jsessionid && !discountTypeRecord.scanUrl) {
+      return errorResponse('CONFIG_ERROR', 'Discount type missing session, scan URL, or custom request template.', 400);
     }
 
     // 发送停车优惠请求
-    const result = await sendParkingDiscount(finalPlateNumber, guest.discountType);
+    const result = await sendParkingDiscount(finalPlateNumber, guest.discountType, {
+      note: guest.notes || null,
+      name: guest.name,
+      phone: guest.phone,
+    });
     const updatedGuest = result.success ? await decrementGuestUseCount(guest.id) : null;
 
     await Promise.allSettled([
@@ -168,10 +173,11 @@ export async function POST(request: NextRequest) {
         guestId: guest.id,
         useCount,
         status,
+        remoteResponse: result.rawResponse,
       });
     } else {
       // 从优惠类型表中获取扫描URL作为重定向
-      const redirectUrl = discountTypeRecord?.scanUrl;
+      const redirectUrl = result.redirectUrl || discountTypeRecord?.scanUrl;
 
       if (redirectUrl) {
         return errorResponse('EXTERNAL_ERROR', '系统正在处理，请稍候...', 200, { 

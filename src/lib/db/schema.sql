@@ -27,6 +27,8 @@ CREATE TABLE IF NOT EXISTS discount_types (
     jsessionid TEXT,
     referer_url TEXT,
     post_params TEXT,
+    request_template TEXT,
+    response_template TEXT,
     created_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL,
     updated_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL
 );
