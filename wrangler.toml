@@ -1,0 +1,24 @@
+name = "carp"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "carp"
+database_id = "f62fad0e-90f0-43a5-8846-90ada13f56ec"
+
+[vars]
+SUPER_ADMIN_USERNAME = "test"
+SUPER_ADMIN_PASSWORD = "test@2026"
+DEFAULT_ADMIN_PASSWORD = "test@123456"
+DEFAULT_USE_COUNT = "5"
+JWT_SECRET = "carp-hotel-parking-jwt-secret-2026"
+

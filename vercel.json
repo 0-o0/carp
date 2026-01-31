@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json.schemastore.org/vercel.json",
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["hkg1", "sin1", "sfo1"],
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "JWT_SECRET": "@jwt_secret",
+    "SUPER_ADMIN_USERNAME": "@super_admin_username",
+    "SUPER_ADMIN_PASSWORD": "@super_admin_password",
+    "DEFAULT_ADMIN_PASSWORD": "@default_admin_password",
+    "DEFAULT_USE_COUNT": "3"
+  },
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate" }
+      ]
+    }
+  ]
+}
