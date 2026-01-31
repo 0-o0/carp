@@ -132,9 +132,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { action } = body;
 
-    // 更新优惠类型的URL配置（设置扫码链接）
-    if (action === 'updateUrl') {
-      const { code, scanUrl } = body;
+  // 更新优惠类型的URL配置（设置扫码链接）
+  if (action === 'updateUrl') {
+    const { code, scanUrl } = body;
       
       if (!code || !scanUrl) {
         return NextResponse.json(
@@ -152,8 +152,15 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 解析URL获取jsessionid
-      const resolveResult = await resolveJsessionId(scanUrl);
+    if (discountType.useCustomRequest) {
+      return NextResponse.json(
+        { success: false, error: '已开启自定义请求，请先关闭自定义开关' },
+        { status: 400 }
+      );
+    }
+
+    // 解析URL获取jsessionid
+    const resolveResult = await resolveJsessionId(scanUrl);
       
       if (!resolveResult.success) {
         return NextResponse.json({
@@ -180,34 +187,44 @@ export async function POST(request: NextRequest) {
     // 创建新优惠类型
 
 
-    // ???????/????
-    if (action === 'updateCustom') {
-      const { code, requestTemplate, responseTemplate } = body;
-      if (!code) {
-        return NextResponse.json(
-          { success: false, error: '??????' },
-          { status: 400 }
-        );
-      }
-
-      const discountType = await getDiscountTypeByCode(code);
-      if (!discountType) {
-        return NextResponse.json(
-          { success: false, error: '???????' },
-          { status: 404 }
-        );
-      }
-
-      await updateDiscountTypeByCode(code, {
-        requestTemplate: typeof requestTemplate === 'string' ? requestTemplate : null,
-        responseTemplate: typeof responseTemplate === 'string' ? responseTemplate : null,
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: '????????',
-      });
+  // 更新自定义请求/响应配置
+  if (action === 'updateCustom') {
+    const { code, requestTemplate, responseTemplate, useCustomRequest } = body;
+    if (!code) {
+      return NextResponse.json(
+        { success: false, error: '缺少类型代码' },
+        { status: 400 }
+      );
     }
+
+    const discountType = await getDiscountTypeByCode(code);
+    if (!discountType) {
+      return NextResponse.json(
+        { success: false, error: '优惠类型不存在' },
+        { status: 404 }
+      );
+    }
+
+    const normalizedUseCustom = typeof useCustomRequest === 'boolean' ? useCustomRequest : discountType.useCustomRequest;
+    const normalizedTemplate = typeof requestTemplate === 'string' ? requestTemplate : null;
+    if (normalizedUseCustom && (!normalizedTemplate || !normalizedTemplate.trim())) {
+      return NextResponse.json(
+        { success: false, error: '已开启自定义请求，请填写请求模板' },
+        { status: 400 }
+      );
+    }
+
+    await updateDiscountTypeByCode(code, {
+      requestTemplate: normalizedTemplate,
+      responseTemplate: typeof responseTemplate === 'string' ? responseTemplate : null,
+      useCustomRequest: normalizedUseCustom,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: '自定义配置已更新',
+    });
+  }
 
     if (action === 'create') {
       const { code, name, description, color } = body;

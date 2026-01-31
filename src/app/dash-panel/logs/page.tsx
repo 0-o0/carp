@@ -61,16 +61,25 @@ export default function LogsPage() {
       const response = await fetch('/api/logs?stats=true&days=7', {
         credentials: 'include',
       });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          setStats(result.stats);
-        }
+      if (response.status === 401) {
+        router.push('/dash-panel');
+        return;
+      }
+      const text = await response.text();
+      let result: any = null;
+      try {
+        result = text ? JSON.parse(text) : null;
+      } catch {
+        console.error('加载统计数据失败: 非 JSON 响应', text);
+        return;
+      }
+      if (response.ok && result?.success) {
+        setStats(result.stats);
       }
     } catch (error) {
       console.error('加载统计数据失败:', error);
     }
-  }, []);
+  }, [router]);
 
   // 加载日志设置
   const loadLogSettings = useCallback(async () => {
@@ -78,19 +87,28 @@ export default function LogsPage() {
       const response = await fetch('/api/settings', {
         credentials: 'include',
       });
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.settings) {
-          setLogSettings({
-            log_enabled: result.settings.log_enabled || 'false',
-            log_retention_days: result.settings.log_retention_days || '7',
-          });
-        }
+      if (response.status === 401) {
+        router.push('/dash-panel');
+        return;
+      }
+      const text = await response.text();
+      let result: any = null;
+      try {
+        result = text ? JSON.parse(text) : null;
+      } catch {
+        console.error('加载日志设置失败: 非 JSON 响应', text);
+        return;
+      }
+      if (response.ok && result?.success && result.settings) {
+        setLogSettings({
+          log_enabled: result.settings.log_enabled || 'false',
+          log_retention_days: result.settings.log_retention_days || '7',
+        });
       }
     } catch (error) {
       console.error('加载日志设置失败:', error);
     }
-  }, []);
+  }, [router]);
 
   // 加载日志列表
   const loadLogs = useCallback(async () => {
@@ -116,9 +134,16 @@ export default function LogsPage() {
         return;
       }
 
-      const result: LogQueryResult = await response.json();
+      const text = await response.text();
+      let result: LogQueryResult | null = null;
+      try {
+        result = text ? JSON.parse(text) as LogQueryResult : null;
+      } catch {
+        console.error('加载日志失败: 非 JSON 响应', text);
+        return;
+      }
 
-      if (result.success) {
+      if (response.ok && result?.success) {
         setLogs(result.data);
         setTotal(result.total);
         setTotalPages(result.totalPages);

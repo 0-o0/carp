@@ -135,9 +135,13 @@ export async function POST(request: NextRequest) {
     if (!discountTypeRecord) {
       return errorResponse('CONFIG_ERROR', 'Discount type configuration missing.', 400);
     }
-    const hasCustomRequest = Boolean(discountTypeRecord.requestTemplate && discountTypeRecord.requestTemplate.trim());
-    if (!hasCustomRequest && !discountTypeRecord.jsessionid && !discountTypeRecord.scanUrl) {
-      return errorResponse('CONFIG_ERROR', 'Discount type missing session, scan URL, or custom request template.', 400);
+    const useCustomRequest = Boolean(discountTypeRecord.useCustomRequest);
+    const hasCustomRequest = useCustomRequest && Boolean(discountTypeRecord.requestTemplate && discountTypeRecord.requestTemplate.trim());
+    if (useCustomRequest && !hasCustomRequest) {
+      return errorResponse('CONFIG_ERROR', 'Custom request enabled but template is missing.', 400);
+    }
+    if (!useCustomRequest && !discountTypeRecord.jsessionid && !discountTypeRecord.scanUrl) {
+      return errorResponse('CONFIG_ERROR', 'Discount type missing session or scan URL.', 400);
     }
 
     // 发送停车优惠请求

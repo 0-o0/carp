@@ -3,7 +3,7 @@ import { authenticateRequest } from '@/lib/auth';
 import { getUsageLogs, getSubmissionLogs, getAuditLogs, getLogStats, cleanOldLogs, type LogQueryParams } from '@/lib/db';
 import { errorResponse } from '@/lib/api-response';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 /**
  * GET /api/logs - 获取日志列表

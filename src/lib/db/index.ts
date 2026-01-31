@@ -99,8 +99,8 @@ function readEnvValue(key: StringEnvKey, fallback: string): string {
 
 export function getEnv() {
   return {
-    SUPER_ADMIN_USERNAME: readEnvValue('SUPER_ADMIN_USERNAME', 'admin'),
-    SUPER_ADMIN_PASSWORD: readEnvValue('SUPER_ADMIN_PASSWORD', 'admin@2026'),
+    SUPER_ADMIN_USERNAME: readEnvValue('SUPER_ADMIN_USERNAME', 'test'),
+    SUPER_ADMIN_PASSWORD: readEnvValue('SUPER_ADMIN_PASSWORD', 'test@2026'),
     DEFAULT_ADMIN_PASSWORD: readEnvValue('DEFAULT_ADMIN_PASSWORD', 'changeme@123456'),
     DEFAULT_USE_COUNT: readEnvValue('DEFAULT_USE_COUNT', '3'),
     JWT_SECRET: readEnvValue('JWT_SECRET', 'default-secret-change-in-production'),
@@ -814,6 +814,7 @@ async function ensureDiscountTypesInitialized(): Promise<void> {
           sort_order INTEGER DEFAULT 0 NOT NULL,
           is_active INTEGER DEFAULT 1 NOT NULL,
           is_system INTEGER DEFAULT 0 NOT NULL,
+          use_custom_request INTEGER DEFAULT 0 NOT NULL,
           scan_url TEXT,
           jsessionid TEXT,
           referer_url TEXT,
@@ -840,6 +841,14 @@ async function ensureDiscountTypesInitialized(): Promise<void> {
     }
     try {
       await database.run(sql`ALTER TABLE discount_types ADD COLUMN response_template TEXT`);
+    } catch (error) {
+      const message = String((error as any)?.message || error);
+      if (!message.includes('duplicate column') && !message.includes('already exists')) {
+        throw error;
+      }
+    }
+    try {
+      await database.run(sql`ALTER TABLE discount_types ADD COLUMN use_custom_request INTEGER DEFAULT 0 NOT NULL`);
     } catch (error) {
       const message = String((error as any)?.message || error);
       if (!message.includes('duplicate column') && !message.includes('already exists')) {
@@ -1002,6 +1011,7 @@ export interface UpdateDiscountTypeData {
   jsessionid?: string;
   refererUrl?: string;
   postParams?: string;
+  useCustomRequest?: boolean;
   requestTemplate?: string | null;
   responseTemplate?: string | null;
 }

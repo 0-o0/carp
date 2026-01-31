@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS discount_types (
     sort_order INTEGER DEFAULT 0 NOT NULL,
     is_active INTEGER DEFAULT 1 NOT NULL,
     is_system INTEGER DEFAULT 0 NOT NULL,
+    use_custom_request INTEGER DEFAULT 0 NOT NULL,
     scan_url TEXT,
     jsessionid TEXT,
     referer_url TEXT,

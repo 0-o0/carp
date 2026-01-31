@@ -11,9 +11,9 @@ binding = "ASSETS"
 enabled = true
 
 [[d1_databases]]
-binding = "DB"
-database_name = "carp"
-database_id = "f62fad0e-90f0-43a5-8846-90ada13f56ec"
+binding = "Carp"
+database_name = "carpp"
+database_id = "fdf58de9-0999-4b65-974f-392b2a845537"
 
 [vars]
 SUPER_ADMIN_USERNAME = "test"

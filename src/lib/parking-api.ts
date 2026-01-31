@@ -481,13 +481,21 @@ export async function sendParkingDiscount(
       };
     }
 
-    const customRequestRaw = discountType.requestTemplate?.trim();
+    const useCustomRequest = Boolean(discountType.useCustomRequest);
+    const customRequestRaw = useCustomRequest ? discountType.requestTemplate?.trim() : '';
     const customResponse = parseResponseTemplate(discountType.responseTemplate);
 
     if (discountType.responseTemplate && !customResponse) {
       return {
         success: false,
         message: `Custom response template parse failed for ${discountType.name}`,
+      };
+    }
+
+    if (useCustomRequest && !customRequestRaw) {
+      return {
+        success: false,
+        message: `Custom request enabled but template is empty for ${discountType.name}`,
       };
     }
 

@@ -23,10 +23,13 @@ CREATE TABLE IF NOT EXISTS discount_types (
     sort_order INTEGER DEFAULT 0 NOT NULL,
     is_active INTEGER DEFAULT 1 NOT NULL,
     is_system INTEGER DEFAULT 0 NOT NULL,
+    use_custom_request INTEGER DEFAULT 0 NOT NULL,
     scan_url TEXT,
     jsessionid TEXT,
     referer_url TEXT,
     post_params TEXT,
+    request_template TEXT,
+    response_template TEXT,
     created_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL,
     updated_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL
 );
@@ -138,4 +141,4 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 -- 初始化默认优惠类型
 INSERT OR IGNORE INTO discount_types (code, name, description, color, sort_order, is_system, is_active) VALUES
     ('24hour', '24小时优惠', '短期停车优惠，适用于1天内离店', 'orange', 1, 1, 1),
-    ('5day', '5天优惠', '长期停车优惠，适用于多日住宿', 'purple', 2, 1, 1);
+    ('5day', '5天优惠', '长期停车优惠，适用于多日住宿', 'blue', 2, 1, 1);

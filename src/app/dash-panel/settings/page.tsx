@@ -14,6 +14,7 @@ interface DiscountType {
   sortOrder: number;
   isActive: boolean;
   isSystem: boolean;
+  useCustomRequest: boolean;
   scanUrl: string | null;
   jsessionid: string | null;
   refererUrl: string | null;
@@ -57,6 +58,7 @@ export default function SettingsPage() {
   const [showTypeDetail, setShowTypeDetail] = useState<DiscountType | null>(null);
   const [customRequestDraft, setCustomRequestDraft] = useState('');
   const [customResponseDraft, setCustomResponseDraft] = useState('');
+  const [customRequestEnabled, setCustomRequestEnabled] = useState(false);
   const [savingCustom, setSavingCustom] = useState(false);
   const [newType, setNewType] = useState({ code: '', name: '', description: '', color: '#6366f1' });
   const [addingType, setAddingType] = useState(false);
@@ -99,6 +101,7 @@ export default function SettingsPage() {
     if (!showTypeDetail) return;
     setCustomRequestDraft(showTypeDetail.requestTemplate || '');
     setCustomResponseDraft(showTypeDetail.responseTemplate || '');
+    setCustomRequestEnabled(Boolean(showTypeDetail.useCustomRequest));
   }, [showTypeDetail]);
 
   // 保存设置
@@ -216,10 +219,11 @@ export default function SettingsPage() {
 
 
   // Save custom templates
-  const handleSaveCustomTemplates = async (code: string) => {
+  const handleSaveCustomTemplates = async (code: string, useCustomOverride?: boolean) => {
     setSavingCustom(true);
     setTypeMessages(prev => { const n = { ...prev }; delete n[code]; return n; });
     try {
+      const useCustomRequest = typeof useCustomOverride === 'boolean' ? useCustomOverride : customRequestEnabled;
       const response = await fetch('/api/discount-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -229,6 +233,7 @@ export default function SettingsPage() {
           code,
           requestTemplate: customRequestDraft,
           responseTemplate: customResponseDraft,
+          useCustomRequest,
         }),
       });
       const result = await response.json();
@@ -237,6 +242,15 @@ export default function SettingsPage() {
           ...prev,
           [code]: { type: 'success', text: result.message || 'Saved' },
         }));
+        setCustomRequestEnabled(useCustomRequest);
+        if (showTypeDetail?.code === code) {
+          setShowTypeDetail(prev => prev ? {
+            ...prev,
+            requestTemplate: customRequestDraft,
+            responseTemplate: customResponseDraft,
+            useCustomRequest,
+          } : prev);
+        }
         loadDiscountTypes();
       } else {
         setTypeMessages(prev => ({
@@ -258,6 +272,13 @@ export default function SettingsPage() {
   const handleTargetScan = useCallback(async (targetId: string, url: string) => {
     const type = discountTypes.find(t => t.code === targetId);
     if (type) {
+      if (type.useCustomRequest) {
+        setTypeMessages(prev => ({
+          ...prev,
+          [type.code]: { type: 'error', text: '该类型已开启自定义请求，请先关闭开关' },
+        }));
+        return;
+      }
       await handleQRScan(url, type.code);
       return;
     }
@@ -323,6 +344,11 @@ export default function SettingsPage() {
     );
   }
 
+  const customTemplateReady = customRequestDraft.trim().length > 0;
+  const detailConfigured = showTypeDetail
+    ? (customRequestEnabled ? customTemplateReady : Boolean(showTypeDetail.jsessionid))
+    : false;
+
   return (
     <div className="max-w-4xl space-y-6">
       {/* 页面标题 */}
@@ -369,36 +395,45 @@ export default function SettingsPage() {
         
         <div className="p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-            {discountTypes.filter(type => type.code !== 'none').map(type => (
-              <button
-                key={type.id}
-                onClick={() => setShowTypeDetail(type)}
-                className="group relative p-4 rounded-xl border border-slate-700/50 hover:border-blue-500/40 hover:shadow-lg transition-all text-left bg-slate-800/50 backdrop-blur-sm"
-              >
-                <div className="flex items-start gap-3">
-                  <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0 shadow-sm" style={{ backgroundColor: type.color }} />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground text-sm truncate">{type.name}</div>
-                    <div className="text-xs text-slate-400 font-mono mt-0.5">{type.code}</div>
+            {discountTypes.filter(type => type.code !== 'none').map(type => {
+              const hasCustomTemplate = Boolean(type.requestTemplate && type.requestTemplate.trim());
+              const customActive = type.useCustomRequest;
+              const configured = customActive ? hasCustomTemplate : Boolean(type.jsessionid);
+              return (
+                <button
+                  key={type.id}
+                  onClick={() => setShowTypeDetail(type)}
+                  className="group relative p-4 rounded-xl border border-slate-700/50 hover:border-blue-500/40 hover:shadow-lg transition-all text-left bg-slate-800/50 backdrop-blur-sm"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-3 h-3 rounded-full mt-1 flex-shrink-0 shadow-sm" style={{ backgroundColor: type.color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-foreground text-sm truncate">{type.name}</div>
+                      <div className="text-xs text-slate-400 font-mono mt-0.5">{type.code}</div>
+                    </div>
                   </div>
-                </div>
-                {/* 状态指示 */}
-                <div className="mt-3 flex items-center gap-1.5">
-                  {type.jsessionid ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400 backdrop-blur-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                      已配置
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-50/80 text-amber-600 backdrop-blur-sm">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                      待配置
-                    </span>
-                  )}
-                  {type.isSystem && (
-                    <span className="px-1.5 py-0.5 rounded text-xs bg-slate-100/80 text-slate-500">系统</span>
-                  )}
-                </div>
+                  {/* 状态指示 */}
+                  <div className="mt-3 flex items-center gap-1.5 flex-wrap">
+                    {configured ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-500/20 text-blue-400 backdrop-blur-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        已配置
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-amber-50/80 text-amber-600 backdrop-blur-sm">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        待配置
+                      </span>
+                    )}
+                    {customActive && (
+                      <span className={`px-1.5 py-0.5 rounded text-xs ${hasCustomTemplate ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                        自定义
+                      </span>
+                    )}
+                    {type.isSystem && (
+                      <span className="px-1.5 py-0.5 rounded text-xs bg-slate-100/80 text-slate-500">系统</span>
+                    )}
+                  </div>
                 {/* 消息提示 */}
                 {typeMessages[type.code] && (
                   <div className={`mt-2 text-xs truncate ${typeMessages[type.code].type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
@@ -710,7 +745,7 @@ export default function SettingsPage() {
               
               {/* 状态和 Session 显示 */}
               <div className="flex items-center gap-2 flex-wrap">
-                {showTypeDetail.jsessionid ? (
+                {detailConfigured ? (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400">
                     <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                     已配置
@@ -721,13 +756,16 @@ export default function SettingsPage() {
                     待配置
                   </span>
                 )}
+                <span className={`px-2 py-1 rounded-full text-xs ${customRequestEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
+                  {customRequestEnabled ? '自定义请求' : '扫码模式'}
+                </span>
                 {showTypeDetail.isSystem && (
                   <span className="px-2 py-1 rounded-full text-xs bg-slate-700 text-slate-400">系统内置</span>
                 )}
               </div>
 
               {/* Session ID 显示 */}
-              {showTypeDetail.jsessionid && (
+              {!customRequestEnabled && showTypeDetail.jsessionid && (
                 <div>
                   <label className="block text-xs font-medium text-slate-400 mb-1">当前 Session</label>
                   <div className="px-3 py-2 bg-slate-900 rounded-lg text-xs font-mono text-slate-400 break-all">
@@ -736,12 +774,49 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* 直接扫描配置区域 */}
-              <div className="border-t border-slate-700/50 pt-4 mt-4">
-                <label className="block text-sm font-medium text-slate-300 mb-3">
-                  {showTypeDetail.jsessionid ? '更新配置' : '配置此优惠类型'}
-                </label>
+              {/* 自定义请求开关 */}
+              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div>
+                  <div className="text-sm font-medium text-foreground">启用自定义请求</div>
+                  <div className="text-xs text-slate-500 mt-0.5">开启后将跳过扫码/302，使用自定义 POST 模板</div>
+                </div>
+                <button
+                  onClick={async () => {
+                    if (!showTypeDetail) return;
+                    const next = !customRequestEnabled;
+                    if (next && !customTemplateReady) {
+                      setTypeMessages(prev => ({ ...prev, [showTypeDetail.code]: { type: 'error', text: '请先填写自定义请求模板' } }));
+                      return;
+                    }
+                    setCustomRequestEnabled(next);
+                    await handleSaveCustomTemplates(showTypeDetail.code, next);
+                  }}
+                  disabled={savingCustom}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${customRequestEnabled ? 'bg-emerald-500' : 'bg-slate-600'} ${savingCustom ? 'opacity-50' : ''}`}
+                >
+                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${customRequestEnabled ? 'left-6' : 'left-1'}`} />
+                </button>
+              </div>
 
+              {/* 直接扫描配置区域 */}
+              {!customRequestEnabled && (
+                <div className="border-t border-slate-700/50 pt-4 mt-4">
+                  <label className="block text-sm font-medium text-slate-300 mb-3">
+                    {showTypeDetail.jsessionid ? '更新配置' : '配置此优惠类型'}
+                  </label>
+
+                <QRScanner
+                  targets={[{
+                    id: showTypeDetail.code,
+                    name: showTypeDetail.name,
+                    description: showTypeDetail.description || undefined,
+                    color: showTypeDetail.color,
+                    type: 'discount' as const,
+                  }]}
+                  onScan={handleTargetScan}
+                />
+              </div>
+              )}
 
               {/* Custom request/response */}
               <div className="border-t border-slate-700/50 pt-4 mt-4 space-y-3">
@@ -771,18 +846,6 @@ export default function SettingsPage() {
                 >
                   Save custom config
                 </Button>
-              </div>
-
-                <QRScanner
-                  targets={[{
-                    id: showTypeDetail.code,
-                    name: showTypeDetail.name,
-                    description: showTypeDetail.description || undefined,
-                    color: showTypeDetail.color,
-                    type: 'discount' as const,
-                  }]}
-                  onScan={handleTargetScan}
-                />
               </div>
 
               {/* 消息 */}

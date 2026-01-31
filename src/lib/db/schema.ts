@@ -25,6 +25,7 @@ export const discountTypes = sqliteTable('discount_types', {
   sortOrder: integer('sort_order').default(0).notNull(),
   isActive: integer('is_active', { mode: 'boolean' }).default(true).notNull(),
   isSystem: integer('is_system', { mode: 'boolean' }).default(false).notNull(),
+  useCustomRequest: integer('use_custom_request', { mode: 'boolean' }).default(false).notNull(),
   // Discount config
   scanUrl: text('scan_url'),                        // Scan URL
   jsessionid: text('jsessionid'),                   // Session ID
