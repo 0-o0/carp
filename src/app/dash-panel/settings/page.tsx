@@ -37,7 +37,7 @@ interface Settings {
 export default function SettingsPage() {
   const router = useRouter();
   const [settings, setSettings] = useState<Settings>({
-    default_use_count: '3',
+    default_use_count: '5',
     error_redirect_url: '',
     log_enabled: 'false',
     log_retention_days: '7',

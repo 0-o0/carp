@@ -349,13 +349,74 @@ export async function deleteGuest(id: number): Promise<boolean> {
 
 // ==================== 设置操作 ====================
 
+let settingsInitDone = false;
+let settingsInitPromise: Promise<void> | null = null;
+
+async function ensureSettingsInitialized(): Promise<void> {
+  if (settingsInitDone) return;
+  if (settingsInitPromise) return settingsInitPromise;
+
+  settingsInitPromise = (async () => {
+    const database = await db();
+    let tableExists = true;
+    try {
+      await database.select().from(settings).limit(1);
+    } catch (error) {
+      const message = String((error as any)?.message || error);
+      if (message.includes('no such table') || message.toLowerCase().includes('does not exist')) {
+        tableExists = false;
+      } else {
+        throw error;
+      }
+    }
+
+    if (!tableExists) {
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS settings (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          key TEXT UNIQUE NOT NULL,
+          value TEXT NOT NULL,
+          updated_at TEXT DEFAULT (datetime('now', 'localtime')) NOT NULL
+        );
+      `);
+    }
+
+    await database.run(sql`
+      INSERT OR IGNORE INTO settings (key, value, updated_at) VALUES
+        ('url_24hour', '', datetime('now', 'localtime')),
+        ('url_5day', '', datetime('now', 'localtime')),
+        ('jsessionid_24hour', '', datetime('now', 'localtime')),
+        ('jsessionid_5day', '', datetime('now', 'localtime')),
+        ('referer_24hour', '', datetime('now', 'localtime')),
+        ('referer_5day', '', datetime('now', 'localtime')),
+        ('post_params_24hour', '', datetime('now', 'localtime')),
+        ('post_params_5day', '', datetime('now', 'localtime')),
+        ('default_use_count', '3', datetime('now', 'localtime')),
+        ('error_redirect_url', '', datetime('now', 'localtime')),
+        ('log_enabled', 'false', datetime('now', 'localtime')),
+        ('log_retention_days', '7', datetime('now', 'localtime')),
+        ('pay_url', '', datetime('now', 'localtime')),
+        ('welcome_url', '', datetime('now', 'localtime'))
+    `);
+  })();
+
+  try {
+    await settingsInitPromise;
+    settingsInitDone = true;
+  } finally {
+    settingsInitPromise = null;
+  }
+}
+
 export async function getSetting(key: string): Promise<string | null> {
+  await ensureSettingsInitialized();
   const database = await db();
   const result = await database.select().from(settings).where(eq(settings.key, key)).limit(1);
   return result[0]?.value || null;
 }
 
 export async function getAllSettings(): Promise<Record<string, string>> {
+  await ensureSettingsInitialized();
   const database = await db();
   const result = await database.select().from(settings);
   const settingsMap: Record<string, string> = {};
@@ -366,6 +427,7 @@ export async function getAllSettings(): Promise<Record<string, string>> {
 }
 
 export async function updateSetting(key: string, value: string): Promise<boolean> {
+  await ensureSettingsInitialized();
   // 使用 upsert 模式
   const database = await db();
   await database.run(sql`
@@ -787,6 +849,7 @@ async function ensureDiscountTypesInitialized(): Promise<void> {
   if (discountTypesInitPromise) return discountTypesInitPromise;
 
   discountTypesInitPromise = (async () => {
+    await ensureSettingsInitialized();
     const database = await db();
 
     // 检测表是否存在：尝试读取一行即可（不存在会抛错）
@@ -1068,7 +1131,7 @@ export async function deleteDiscountType(id: number): Promise<{ success: boolean
 
 export async function initializeSettings(): Promise<void> {
   const defaultSettings = [
-    { key: 'default_use_count', value: '3' },
+    { key: 'default_use_count', value: '5' },
     { key: 'error_redirect_url', value: '' },
     { key: 'pay_url', value: '' },
     { key: 'welcome_url', value: '' },

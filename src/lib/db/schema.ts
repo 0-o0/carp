@@ -47,8 +47,8 @@ export const guests = sqliteTable('guests', {
   phone: text('phone').notNull(),
   notes: text('notes'),
   plateNumber: text('plate_number'),
-  useCount: integer('use_count').default(3).notNull(),
-  usesDefaultSnapshot: integer('uses_default_snapshot').default(3).notNull(),
+  useCount: integer('use_count').default(5).notNull(),
+  usesDefaultSnapshot: integer('uses_default_snapshot').default(5).notNull(),
   checkInTime: text('check_in_time').notNull(),
   checkOutTime: text('check_out_time').notNull(),
   discountType: text('discount_type').notNull(),    // 动态关联discount_types.code

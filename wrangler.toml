@@ -1,4 +1,4 @@
-name = "hcar"
+name = "carp"
 main = ".open-next/worker.js"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -11,9 +11,9 @@ binding = "ASSETS"
 enabled = true
 
 [[d1_databases]]
-binding = "Carp"
-database_name = "hcar"
-database_id = "043e757f-8806-4671-be37-39b73429e1e4"
+binding = "carp"
+database_name = "carp"
+database_id = "34f26871-de77-4d7d-92dc-a2cad3738ad3"
 
 [vars]
 SUPER_ADMIN_USERNAME = "test"

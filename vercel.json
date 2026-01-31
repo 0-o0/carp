@@ -10,7 +10,7 @@
     "SUPER_ADMIN_USERNAME": "@super_admin_username",
     "SUPER_ADMIN_PASSWORD": "@super_admin_password",
     "DEFAULT_ADMIN_PASSWORD": "@default_admin_password",
-    "DEFAULT_USE_COUNT": "3"
+    "DEFAULT_USE_COUNT": "5"
   },
   "headers": [
     {
