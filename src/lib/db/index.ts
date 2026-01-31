@@ -102,7 +102,7 @@ export function getEnv() {
     SUPER_ADMIN_USERNAME: readEnvValue('SUPER_ADMIN_USERNAME', 'test'),
     SUPER_ADMIN_PASSWORD: readEnvValue('SUPER_ADMIN_PASSWORD', 'test@2026'),
     DEFAULT_ADMIN_PASSWORD: readEnvValue('DEFAULT_ADMIN_PASSWORD', 'changeme@123456'),
-    DEFAULT_USE_COUNT: readEnvValue('DEFAULT_USE_COUNT', '3'),
+    DEFAULT_USE_COUNT: readEnvValue('DEFAULT_USE_COUNT', '5'),
     JWT_SECRET: readEnvValue('JWT_SECRET', 'default-secret-change-in-production'),
   };
 }

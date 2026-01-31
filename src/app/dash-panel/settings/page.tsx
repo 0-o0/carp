@@ -434,20 +434,21 @@ export default function SettingsPage() {
                       <span className="px-1.5 py-0.5 rounded text-xs bg-slate-100/80 text-slate-500">系统</span>
                     )}
                   </div>
-                {/* 消息提示 */}
-                {typeMessages[type.code] && (
-                  <div className={`mt-2 text-xs truncate ${typeMessages[type.code].type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
-                    {typeMessages[type.code].text}
-                  </div>
-                )}
-                {/* 更新中 */}
-                {updatingType === type.code && (
-                  <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-              </button>
-            ))}
+                  {/* 消息提示 */}
+                  {typeMessages[type.code] && (
+                    <div className={`mt-2 text-xs truncate ${typeMessages[type.code].type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
+                      {typeMessages[type.code].text}
+                    </div>
+                  )}
+                  {/* 更新中 */}
+                  {updatingType === type.code && (
+                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                      <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>

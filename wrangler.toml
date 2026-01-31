@@ -1,4 +1,4 @@
-name = "carp"
+name = "hcar"
 main = ".open-next/worker.js"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
@@ -12,13 +12,13 @@ enabled = true
 
 [[d1_databases]]
 binding = "Carp"
-database_name = "carpp"
-database_id = "fdf58de9-0999-4b65-974f-392b2a845537"
+database_name = "hcar"
+database_id = "043e757f-8806-4671-be37-39b73429e1e4"
 
 [vars]
 SUPER_ADMIN_USERNAME = "test"
 SUPER_ADMIN_PASSWORD = "test@2026"
 DEFAULT_ADMIN_PASSWORD = "test@123456"
 DEFAULT_USE_COUNT = "5"
-JWT_SECRET = "carp-hotel-parking-jwt-secret-2026"
+JWT_SECRET = "hcarp-hotel-parking-jwt-secret-2026"
 
