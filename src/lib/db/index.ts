@@ -25,7 +25,7 @@ function tryGetCloudflareD1(): D1Database | null {
   try {
     const context = getCloudflareContext();
     const env = (context?.env as CloudflareEnv) ?? null;
-    return env?.DB ?? null;
+    return env?.DB ?? env?.carp ?? null;
   } catch {
     return null;
   }
@@ -55,7 +55,7 @@ export async function db(): Promise<DrizzleDB> {
 
   if (isProbablyWorkerdRuntime()) {
     throw new Error(
-      'Cloudflare D1 binding \"DB\" is missing. Ensure your deployment binds a D1 database as DB (wrangler.toml [[d1_databases]] binding = \"DB\").'
+      'Cloudflare D1 binding is missing. Ensure your deployment binds a D1 database as \"DB\" (or \"carp\") in wrangler.toml.'
     );
   }
 

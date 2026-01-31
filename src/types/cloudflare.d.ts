@@ -1,5 +1,6 @@
 interface CloudflareEnv {
-  DB: D1Database;
+  DB?: D1Database;
+  carp?: D1Database;
   SUPER_ADMIN_USERNAME: string;
   SUPER_ADMIN_PASSWORD: string;
   DEFAULT_ADMIN_PASSWORD: string;
