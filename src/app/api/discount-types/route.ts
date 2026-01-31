@@ -205,6 +205,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (discountType.isSystem) {
+      return NextResponse.json(
+        { success: false, error: '系统内置类型不支持自定义请求' },
+        { status: 400 }
+      );
+    }
+
     const normalizedUseCustom = typeof useCustomRequest === 'boolean' ? useCustomRequest : discountType.useCustomRequest;
     const normalizedTemplate = typeof requestTemplate === 'string' ? requestTemplate : null;
     if (normalizedUseCustom && (!normalizedTemplate || !normalizedTemplate.trim())) {
@@ -226,26 +233,35 @@ export async function POST(request: NextRequest) {
     });
   }
 
-    if (action === 'create') {
-      const { code, name, description, color } = body;
-      
-      if (!code || !name) {
+  if (action === 'create') {
+    const { code, name, description, color, useCustomRequest, requestTemplate, responseTemplate } = body;
+    
+    if (!code || !name) {
         return NextResponse.json(
           { success: false, error: '请填写类型代码和名称' },
           { status: 400 }
         );
       }
 
-      if (code === 'none') {
+    if (code === 'none') {
         return NextResponse.json(
           { success: false, error: 'Code "none" is reserved' },
           { status: 400 }
         );
-      }
+    }
 
-      // 检查code是否已存在
-      const existing = await getDiscountTypeByCode(code);
-      if (existing) {
+    const normalizedUseCustom = Boolean(useCustomRequest);
+    const normalizedTemplate = typeof requestTemplate === 'string' ? requestTemplate : null;
+    if (normalizedUseCustom && (!normalizedTemplate || !normalizedTemplate.trim())) {
+      return NextResponse.json(
+        { success: false, error: '已开启自定义请求，请填写请求模板' },
+        { status: 400 }
+      );
+    }
+
+    // 检查code是否已存在
+    const existing = await getDiscountTypeByCode(code);
+    if (existing) {
         return NextResponse.json(
           { success: false, error: '该类型代码已存在' },
           { status: 400 }
@@ -256,13 +272,16 @@ export async function POST(request: NextRequest) {
       const allTypes = await getAllDiscountTypes();
       const maxOrder = Math.max(...allTypes.map(t => t.sortOrder || 0), 0);
 
-      const newType = await createDiscountType({
-        code,
-        name,
-        description,
-        color: color || 'orange',
-        sortOrder: maxOrder + 1,
-      });
+    const newType = await createDiscountType({
+      code,
+      name,
+      description,
+      color: color || 'orange',
+      sortOrder: maxOrder + 1,
+      useCustomRequest: normalizedUseCustom,
+      requestTemplate: normalizedTemplate,
+      responseTemplate: typeof responseTemplate === 'string' ? responseTemplate : null,
+    });
 
       if (!newType) {
         return NextResponse.json(

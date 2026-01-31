@@ -94,7 +94,7 @@ export default function GuestsPage() {
         }
 
         const data = (await response.json()) as { success: boolean; settings?: Record<string, string> };
-        const next = Number.parseInt(data.settings?.default_use_count || '3', 10);
+        const next = Number.parseInt(data.settings?.default_use_count || '5', 10);
         if (Number.isFinite(next) && next > 0) {
           setDefaultUseCount(next);
         }

@@ -357,6 +357,7 @@ async function ensureSettingsInitialized(): Promise<void> {
   if (settingsInitPromise) return settingsInitPromise;
 
   settingsInitPromise = (async () => {
+    const envDefaultUseCount = getEnv().DEFAULT_USE_COUNT || '3';
     const database = await db();
     let tableExists = true;
     try {
@@ -391,13 +392,27 @@ async function ensureSettingsInitialized(): Promise<void> {
         ('referer_5day', '', datetime('now', 'localtime')),
         ('post_params_24hour', '', datetime('now', 'localtime')),
         ('post_params_5day', '', datetime('now', 'localtime')),
-        ('default_use_count', '3', datetime('now', 'localtime')),
+        ('default_use_count', ${envDefaultUseCount}, datetime('now', 'localtime')),
         ('error_redirect_url', '', datetime('now', 'localtime')),
         ('log_enabled', 'false', datetime('now', 'localtime')),
         ('log_retention_days', '7', datetime('now', 'localtime')),
         ('pay_url', '', datetime('now', 'localtime')),
         ('welcome_url', '', datetime('now', 'localtime'))
     `);
+
+    const existingDefault = await database
+      .select()
+      .from(settings)
+      .where(eq(settings.key, 'default_use_count'))
+      .limit(1);
+    const currentValue = existingDefault[0]?.value ?? '';
+    if ((currentValue === '' || currentValue === '3') && envDefaultUseCount && envDefaultUseCount !== currentValue) {
+      await database.run(sql`
+        UPDATE settings
+        SET value = ${envDefaultUseCount}, updated_at = datetime('now', 'localtime')
+        WHERE key = 'default_use_count'
+      `);
+    }
   })();
 
   try {
@@ -1045,6 +1060,9 @@ export interface CreateDiscountTypeData {
   description?: string;
   color?: string;
   sortOrder?: number;
+  useCustomRequest?: boolean;
+  requestTemplate?: string | null;
+  responseTemplate?: string | null;
 }
 
 /**
@@ -1060,6 +1078,9 @@ export async function createDiscountType(data: CreateDiscountTypeData): Promise<
     color: data.color || 'orange',
     sortOrder: data.sortOrder || 0,
     isSystem: false,
+    useCustomRequest: Boolean(data.useCustomRequest),
+    requestTemplate: typeof data.requestTemplate === 'string' ? data.requestTemplate : null,
+    responseTemplate: typeof data.responseTemplate === 'string' ? data.responseTemplate : null,
   }).returning();
   return result[0] || null;
 }
@@ -1130,8 +1151,9 @@ export async function deleteDiscountType(id: number): Promise<{ success: boolean
 // ==================== 数据库初始化 ====================
 
 export async function initializeSettings(): Promise<void> {
+  const envDefaultUseCount = getEnv().DEFAULT_USE_COUNT || '5';
   const defaultSettings = [
-    { key: 'default_use_count', value: '5' },
+    { key: 'default_use_count', value: envDefaultUseCount },
     { key: 'error_redirect_url', value: '' },
     { key: 'pay_url', value: '' },
     { key: 'welcome_url', value: '' },

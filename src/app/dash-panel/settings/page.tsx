@@ -59,8 +59,13 @@ export default function SettingsPage() {
   const [customRequestDraft, setCustomRequestDraft] = useState('');
   const [customResponseDraft, setCustomResponseDraft] = useState('');
   const [customRequestEnabled, setCustomRequestEnabled] = useState(false);
+  const [detailTab, setDetailTab] = useState<'base' | 'custom'>('base');
+  const [addTab, setAddTab] = useState<'base' | 'custom'>('base');
   const [savingCustom, setSavingCustom] = useState(false);
   const [newType, setNewType] = useState({ code: '', name: '', description: '', color: '#6366f1' });
+  const [newTypeCustomEnabled, setNewTypeCustomEnabled] = useState(false);
+  const [newTypeRequestTemplate, setNewTypeRequestTemplate] = useState('');
+  const [newTypeResponseTemplate, setNewTypeResponseTemplate] = useState('');
   const [addingType, setAddingType] = useState(false);
   const [deletingType, setDeletingType] = useState<string | null>(null);
   const [typeMessages, setTypeMessages] = useState<Record<string, { type: 'success' | 'error'; text: string }>>({});
@@ -101,7 +106,8 @@ export default function SettingsPage() {
     if (!showTypeDetail) return;
     setCustomRequestDraft(showTypeDetail.requestTemplate || '');
     setCustomResponseDraft(showTypeDetail.responseTemplate || '');
-    setCustomRequestEnabled(Boolean(showTypeDetail.useCustomRequest));
+    setCustomRequestEnabled(Boolean(showTypeDetail.useCustomRequest && !showTypeDetail.isSystem));
+    setDetailTab('base');
   }, [showTypeDetail]);
 
   // 保存设置
@@ -168,18 +174,33 @@ export default function SettingsPage() {
       setTypeMessages(prev => ({ ...prev, new: { type: 'error', text: '请填写代码和名称' } }));
       return;
     }
+    if (newTypeCustomEnabled && !newTypeRequestTemplate.trim()) {
+      setTypeMessages(prev => ({ ...prev, new: { type: 'error', text: '已开启自定义请求，请填写请求模板' } }));
+      return;
+    }
     setAddingType(true);
     try {
       const response = await fetch('/api/discount-types', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ action: 'create', ...newType, description: newType.description || null }),
+        body: JSON.stringify({
+          action: 'create',
+          ...newType,
+          description: newType.description || null,
+          useCustomRequest: newTypeCustomEnabled,
+          requestTemplate: newTypeRequestTemplate,
+          responseTemplate: newTypeResponseTemplate,
+        }),
       });
       const result = await response.json();
       if (result.success) {
         setShowAddModal(false);
         setNewType({ code: '', name: '', description: '', color: '#6366f1' });
+        setNewTypeCustomEnabled(false);
+        setNewTypeRequestTemplate('');
+        setNewTypeResponseTemplate('');
+        setAddTab('base');
         setTypeMessages(prev => { const n = { ...prev }; delete n.new; return n; });
         loadDiscountTypes();
       } else {
@@ -346,7 +367,9 @@ export default function SettingsPage() {
 
   const customTemplateReady = customRequestDraft.trim().length > 0;
   const detailConfigured = showTypeDetail
-    ? (customRequestEnabled ? customTemplateReady : Boolean(showTypeDetail.jsessionid))
+    ? (showTypeDetail.isSystem
+        ? Boolean(showTypeDetail.jsessionid)
+        : (customRequestEnabled ? customTemplateReady : Boolean(showTypeDetail.jsessionid)))
     : false;
 
   return (
@@ -383,7 +406,13 @@ export default function SettingsPage() {
             </div>
           </div>
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              setAddTab('base');
+              setNewTypeCustomEnabled(false);
+              setNewTypeRequestTemplate('');
+              setNewTypeResponseTemplate('');
+              setShowAddModal(true);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-orange-500 hover:bg-orange-500/10 rounded-lg transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -397,7 +426,7 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {discountTypes.filter(type => type.code !== 'none').map(type => {
               const hasCustomTemplate = Boolean(type.requestTemplate && type.requestTemplate.trim());
-              const customActive = type.useCustomRequest;
+              const customActive = !type.isSystem && type.useCustomRequest;
               const configured = customActive ? hasCustomTemplate : Boolean(type.jsessionid);
               return (
                 <button
@@ -661,57 +690,129 @@ export default function SettingsPage() {
               <h3 className="font-semibold text-foreground">新增优惠类型</h3>
             </div>
             <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">类型代码</label>
-                <input
-                  type="text"
-                  placeholder="例如: 4hour"
-                  value={newType.code}
-                  onChange={e => setNewType(prev => ({ ...prev, code: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
-                />
-                <p className="text-xs text-slate-500 mt-1">英文和数字，用于系统识别</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setAddTab('base')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${addTab === 'base' ? 'bg-slate-700 text-foreground' : 'bg-slate-900 text-slate-400'}`}
+                >
+                  基础配置
+                </button>
+                <button
+                  onClick={() => setAddTab('custom')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${addTab === 'custom' ? 'bg-slate-700 text-foreground' : 'bg-slate-900 text-slate-400'}`}
+                >
+                  自定义请求
+                </button>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">显示名称</label>
-                <input
-                  type="text"
-                  placeholder="例如: 4小时优惠"
-                  value={newType.name}
-                  onChange={e => setNewType(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">描述（可选）</label>
-                <input
-                  type="text"
-                  placeholder="例如: 适用于短时停车"
-                  value={newType.description}
-                  onChange={e => setNewType(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">标识颜色</label>
-                <div className="flex gap-2">
-                  {['#6366f1', '#f97316', '#10b981', '#3b82f6', '#ef4444', '#ec4899', '#8b5cf6'].map(c => (
-                    <button
-                      key={c}
-                      onClick={() => setNewType(prev => ({ ...prev, color: c }))}
-                      className={`w-8 h-8 rounded-lg transition-transform ${newType.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
-                      style={{ backgroundColor: c }}
+
+              {addTab === 'base' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">类型代码</label>
+                    <input
+                      type="text"
+                      placeholder="例如: 4hour"
+                      value={newType.code}
+                      onChange={e => setNewType(prev => ({ ...prev, code: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
                     />
-                  ))}
+                    <p className="text-xs text-slate-500 mt-1">英文和数字，用于系统识别</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">显示名称</label>
+                    <input
+                      type="text"
+                      placeholder="例如: 4小时优惠"
+                      value={newType.name}
+                      onChange={e => setNewType(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">描述（可选）</label>
+                    <input
+                      type="text"
+                      placeholder="例如: 适用于短时停车"
+                      value={newType.description}
+                      onChange={e => setNewType(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-sm text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1.5">标识颜色</label>
+                    <div className="flex gap-2">
+                      {['#6366f1', '#f97316', '#10b981', '#3b82f6', '#ef4444', '#ec4899', '#8b5cf6'].map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setNewType(prev => ({ ...prev, color: c }))}
+                          className={`w-8 h-8 rounded-lg transition-transform ${newType.color === c ? 'ring-2 ring-offset-2 ring-gray-400 scale-110' : ''}`}
+                          style={{ backgroundColor: c }}
+                        />
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {addTab === 'custom' && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                    <div>
+                      <div className="text-sm font-medium text-foreground">启用自定义请求</div>
+                      <div className="text-xs text-slate-500 mt-0.5">开启后将使用自定义 POST 模板</div>
+                    </div>
+                    <button
+                      onClick={() => setNewTypeCustomEnabled(prev => !prev)}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${newTypeCustomEnabled ? 'bg-emerald-500' : 'bg-slate-600'}`}
+                    >
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${newTypeCustomEnabled ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+                  {!newTypeCustomEnabled && (
+                    <p className="text-xs text-slate-500">关闭时将使用扫码/URL 配置。</p>
+                  )}
+                  {newTypeCustomEnabled && (
+                    <>
+                      <label className="block text-sm font-medium text-slate-300">Custom request template (JSON or const snippet)</label>
+                      <textarea
+                        value={newTypeRequestTemplate}
+                        onChange={e => setNewTypeRequestTemplate(e.target.value)}
+                        rows={5}
+                        placeholder={'Supports JSON or "const url/method/headers/body" snippet'}
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                      />
+                      <label className="block text-sm font-medium text-slate-300">Response rules (JSON)</label>
+                      <textarea
+                        value={newTypeResponseTemplate}
+                        onChange={e => setNewTypeResponseTemplate(e.target.value)}
+                        rows={4}
+                        placeholder='{"type":"json","success":{"path":"info.errmsg","equals":"ok"},"messagePath":"info.errmsg"}'
+                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                      />
+                    </>
+                  )}
+                </div>
+              )}
+
               {typeMessages.new && (
                 <div className={`text-sm ${typeMessages.new.type === 'success' ? 'text-blue-400' : 'text-red-500'}`}>
                   {typeMessages.new.text}
                 </div>
               )}
               <div className="flex gap-3 pt-2">
-                <Button variant="outline" onClick={() => { setShowAddModal(false); setNewType({ code: '', name: '', description: '', color: '#6366f1' }); setTypeMessages(p => { const n = {...p}; delete n.new; return n; }); }} className="flex-1">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setNewType({ code: '', name: '', description: '', color: '#6366f1' });
+                    setNewTypeCustomEnabled(false);
+                    setNewTypeRequestTemplate('');
+                    setNewTypeResponseTemplate('');
+                    setAddTab('base');
+                    setTypeMessages(p => { const n = { ...p }; delete n.new; return n; });
+                  }}
+                  className="flex-1"
+                >
                   取消
                 </Button>
                 <Button variant="primary" onClick={handleAddType} loading={addingType} className="flex-1">
@@ -743,111 +844,133 @@ export default function SettingsPage() {
               {showTypeDetail.description && (
                 <p className="text-sm text-slate-400">{showTypeDetail.description}</p>
               )}
-              
-              {/* 状态和 Session 显示 */}
-              <div className="flex items-center gap-2 flex-wrap">
-                {detailConfigured ? (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    已配置
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    待配置
-                  </span>
-                )}
-                <span className={`px-2 py-1 rounded-full text-xs ${customRequestEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
-                  {customRequestEnabled ? '自定义请求' : '扫码模式'}
-                </span>
-                {showTypeDetail.isSystem && (
-                  <span className="px-2 py-1 rounded-full text-xs bg-slate-700 text-slate-400">系统内置</span>
-                )}
-              </div>
 
-              {/* Session ID 显示 */}
-              {!customRequestEnabled && showTypeDetail.jsessionid && (
-                <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-1">当前 Session</label>
-                  <div className="px-3 py-2 bg-slate-900 rounded-lg text-xs font-mono text-slate-400 break-all">
-                    {showTypeDetail.jsessionid.slice(0, 48)}...
-                  </div>
-                </div>
-              )}
-
-              {/* 自定义请求开关 */}
-              <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                <div>
-                  <div className="text-sm font-medium text-foreground">启用自定义请求</div>
-                  <div className="text-xs text-slate-500 mt-0.5">开启后将跳过扫码/302，使用自定义 POST 模板</div>
-                </div>
+              <div className="flex gap-2">
                 <button
-                  onClick={async () => {
-                    if (!showTypeDetail) return;
-                    const next = !customRequestEnabled;
-                    if (next && !customTemplateReady) {
-                      setTypeMessages(prev => ({ ...prev, [showTypeDetail.code]: { type: 'error', text: '请先填写自定义请求模板' } }));
-                      return;
-                    }
-                    setCustomRequestEnabled(next);
-                    await handleSaveCustomTemplates(showTypeDetail.code, next);
-                  }}
-                  disabled={savingCustom}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${customRequestEnabled ? 'bg-emerald-500' : 'bg-slate-600'} ${savingCustom ? 'opacity-50' : ''}`}
+                  onClick={() => setDetailTab('base')}
+                  className={`flex-1 px-3 py-2 rounded-lg text-sm ${detailTab === 'base' ? 'bg-slate-700 text-foreground' : 'bg-slate-900 text-slate-400'}`}
                 >
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${customRequestEnabled ? 'left-6' : 'left-1'}`} />
+                  基础配置
                 </button>
+                {!showTypeDetail.isSystem && (
+                  <button
+                    onClick={() => setDetailTab('custom')}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm ${detailTab === 'custom' ? 'bg-slate-700 text-foreground' : 'bg-slate-900 text-slate-400'}`}
+                  >
+                    自定义请求
+                  </button>
+                )}
               </div>
 
-              {/* 直接扫描配置区域 */}
-              {!customRequestEnabled && (
-                <div className="border-t border-slate-700/50 pt-4 mt-4">
-                  <label className="block text-sm font-medium text-slate-300 mb-3">
-                    {showTypeDetail.jsessionid ? '更新配置' : '配置此优惠类型'}
-                  </label>
+              {detailTab === 'base' && (
+                <div className="space-y-4">
+                  {/* 状态和 Session 显示 */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {detailConfigured ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-blue-500/20 text-blue-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        已配置
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-amber-500/20 text-amber-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                        待配置
+                      </span>
+                    )}
+                    <span className={`px-2 py-1 rounded-full text-xs ${customRequestEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-300'}`}>
+                      {customRequestEnabled ? '自定义请求' : '扫码模式'}
+                    </span>
+                    {showTypeDetail.isSystem && (
+                      <span className="px-2 py-1 rounded-full text-xs bg-slate-700 text-slate-400">系统内置</span>
+                    )}
+                  </div>
 
-                <QRScanner
-                  targets={[{
-                    id: showTypeDetail.code,
-                    name: showTypeDetail.name,
-                    description: showTypeDetail.description || undefined,
-                    color: showTypeDetail.color,
-                    type: 'discount' as const,
-                  }]}
-                  onScan={handleTargetScan}
-                />
-              </div>
+                  {/* Session ID 显示 */}
+                  {!customRequestEnabled && showTypeDetail.jsessionid && (
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-1">当前 Session</label>
+                      <div className="px-3 py-2 bg-slate-900 rounded-lg text-xs font-mono text-slate-400 break-all">
+                        {showTypeDetail.jsessionid.slice(0, 48)}...
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 直接扫描配置区域 */}
+                  {!customRequestEnabled && (
+                    <div className="border-t border-slate-700/50 pt-4 mt-4">
+                      <label className="block text-sm font-medium text-slate-300 mb-3">
+                        {showTypeDetail.jsessionid ? '更新配置' : '配置此优惠类型'}
+                      </label>
+
+                      <QRScanner
+                        targets={[{
+                          id: showTypeDetail.code,
+                          name: showTypeDetail.name,
+                          description: showTypeDetail.description || undefined,
+                          color: showTypeDetail.color,
+                          type: 'discount' as const,
+                        }]}
+                        onScan={handleTargetScan}
+                      />
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Custom request/response */}
-              <div className="border-t border-slate-700/50 pt-4 mt-4 space-y-3">
-                <label className="block text-sm font-medium text-slate-300">Custom request template (JSON or const snippet)</label>
-                <textarea
-                  value={customRequestDraft}
-                  onChange={e => setCustomRequestDraft(e.target.value)}
-                  rows={6}
-                  placeholder={'Supports JSON or "const url/method/headers/body" snippet'}
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
-                />
-                <label className="block text-sm font-medium text-slate-300">Response rules (JSON)</label>
-                <textarea
-                  value={customResponseDraft}
-                  onChange={e => setCustomResponseDraft(e.target.value)}
-                  rows={5}
-                  placeholder='{"type":"json","success":{"path":"info.errmsg","equals":"ok"},"messagePath":"info.errmsg"}'
-                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
-                />
-                <p className="text-xs text-slate-500">Placeholders: {'{{plate}}'} {'{{discountType}}'} {'{{jsessionid}}'} {'{{name}}'} {'{{phone}}'} {'{{note}}'}</p>
-                <p className="text-xs text-slate-500">{'Overrides: #body{...} replaces or patches body, #header{...} merges headers.'}</p>
-                <Button
-                  variant="outline"
-                  onClick={() => handleSaveCustomTemplates(showTypeDetail.code)}
-                  loading={savingCustom}
-                  className="w-full"
-                >
-                  Save custom config
-                </Button>
-              </div>
+              {detailTab === 'custom' && !showTypeDetail.isSystem && (
+                <div className="space-y-4">
+                  {/* 自定义请求开关 */}
+                  <div className="flex items-center justify-between p-3 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                    <div>
+                      <div className="text-sm font-medium text-foreground">启用自定义请求</div>
+                      <div className="text-xs text-slate-500 mt-0.5">开启后将跳过扫码/302，使用自定义 POST 模板</div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!showTypeDetail) return;
+                        const next = !customRequestEnabled;
+                        if (next && !customTemplateReady) {
+                          setTypeMessages(prev => ({ ...prev, [showTypeDetail.code]: { type: 'error', text: '请先填写自定义请求模板' } }));
+                          return;
+                        }
+                        setCustomRequestEnabled(next);
+                        await handleSaveCustomTemplates(showTypeDetail.code, next);
+                      }}
+                      disabled={savingCustom}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${customRequestEnabled ? 'bg-emerald-500' : 'bg-slate-600'} ${savingCustom ? 'opacity-50' : ''}`}
+                    >
+                      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${customRequestEnabled ? 'left-6' : 'left-1'}`} />
+                    </button>
+                  </div>
+
+                  <label className="block text-sm font-medium text-slate-300">Custom request template (JSON or const snippet)</label>
+                  <textarea
+                    value={customRequestDraft}
+                    onChange={e => setCustomRequestDraft(e.target.value)}
+                    rows={6}
+                    placeholder={'Supports JSON or "const url/method/headers/body" snippet'}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                  />
+                  <label className="block text-sm font-medium text-slate-300">Response rules (JSON)</label>
+                  <textarea
+                    value={customResponseDraft}
+                    onChange={e => setCustomResponseDraft(e.target.value)}
+                    rows={5}
+                    placeholder='{"type":"json","success":{"path":"info.errmsg","equals":"ok"},"messagePath":"info.errmsg"}'
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-foreground focus:outline-none focus:border-blue-500 focus:bg-slate-800 font-mono"
+                  />
+                  <p className="text-xs text-slate-500">Placeholders: {'{{plate}}'} {'{{discountType}}'} {'{{jsessionid}}'} {'{{name}}'} {'{{phone}}'} {'{{note}}'}</p>
+                  <p className="text-xs text-slate-500">{'Overrides: #body{...} replaces or patches body, #header{...} merges headers.'}</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => handleSaveCustomTemplates(showTypeDetail.code)}
+                    loading={savingCustom}
+                    className="w-full"
+                  >
+                    Save custom config
+                  </Button>
+                </div>
+              )}
 
               {/* 消息 */}
               {typeMessages[showTypeDetail.code] && (

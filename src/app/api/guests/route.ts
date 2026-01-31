@@ -10,6 +10,7 @@ import {
   deleteGuest,
   searchGuests,
   getSetting,
+  getEnv,
   createAuditLog,
   type Guest,
   type GuestStatus
@@ -121,7 +122,8 @@ export async function POST(request: NextRequest) {
 
     // 获取默认使用次数
     const defaultUseCount = await getSetting('default_use_count');
-    const finalUseCount = useCount ?? parseInt(defaultUseCount || '3', 10);
+    const envDefaultUseCount = getEnv().DEFAULT_USE_COUNT || '5';
+    const finalUseCount = useCount ?? parseInt(defaultUseCount || envDefaultUseCount || '3', 10);
 
     // 计算时间
     const checkIn = checkInTime ? parseDateTime(checkInTime) : new Date();
